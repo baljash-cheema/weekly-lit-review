@@ -1,0 +1,92 @@
+name: Weekly literature review
+
+# Runs every Friday morning and emails the review, aiming to land by 7:30 am Central.
+# GitHub schedules are in UTC and do not follow daylight saving, so there are two
+# entries and the first step keeps whichever one is 6:55 am in Chicago right now.
+# GitHub can start scheduled jobs several minutes late; the 6:55 start leaves room.
+#
+# To run it by hand: GitHub -> Actions -> Weekly literature review -> Run workflow.
+
+on:
+  schedule:
+    - cron: "55 11 * * 5"   # 6:55 am Central, daylight time (Mar-Nov)
+    - cron: "55 12 * * 5"   # 6:55 am Central, standard time (Nov-Mar)
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days to look back"
+        default: "7"
+      send_email:
+        description: "Email the report"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: write   # only used by the keep-alive step below
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # GitHub switches off schedules in public repositories after 60 days without
+      # activity. Re-enabling the workflow on each scheduled run resets that clock.
+      - name: Keep the schedule alive
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/weekly-review.yml/enable"
+
+      - name: Keep only the run that matches Chicago time
+        id: gate
+        run: |
+          zone=$(TZ=America/Chicago date +%Z)
+          run=true
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.event.schedule }}" = "55 11 * * 5" ] && [ "$zone" != "CDT" ]; then run=false; fi
+            if [ "${{ github.event.schedule }}" = "55 12 * * 5" ] && [ "$zone" != "CST" ]; then run=false; fi
+          fi
+          echo "Chicago zone: $zone, run: $run"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.run == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Collect this week's candidates from PubMed
+        if: steps.gate.outputs.run == 'true'
+        run: python collect.py --days "${{ inputs.days || '7' }}"
+
+      - name: Select and write up with Claude
+        if: steps.gate.outputs.run == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python curate.py
+
+      - name: Email the report
+        if: steps.gate.outputs.run == 'true' && (github.event_name == 'schedule' || inputs.send_email)
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
+          REVIEW_EMAIL_TO: ${{ secrets.REVIEW_EMAIL_TO }}
+        run: python send_email.py reports/review_*.md
+
+      - name: Keep a copy of the report
+        if: steps.gate.outputs.run == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-${{ github.run_id }}
+          path: reports/review_*.md
+          if-no-files-found: ignore
+          retention-days: 90

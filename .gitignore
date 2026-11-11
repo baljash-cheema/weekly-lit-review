@@ -1,0 +1,29 @@
+# Virtual environment
+.venv/
+
+# Environment variables (contains app password)
+.env
+
+# Raw data, logs, and intermediate curation files
+data/*.json
+data/*.log
+data/*.md
+
+# Generated reports
+reports/*.md
+reports/*.html
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Local Claude Code settings
+.claude/

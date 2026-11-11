@@ -1,0 +1,7 @@
+# Runs on Python 3.10+ (the Claude API library requires it; GitHub Actions uses 3.12).
+requests==2.31.0
+feedparser==6.0.11
+pyyaml==6.0.1
+python-dotenv==1.0.1
+markdown==3.5.2
+anthropic>=1.0,<2

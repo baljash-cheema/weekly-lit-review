@@ -1,0 +1,268 @@
+# Weekly Literature Review — Configuration
+#
+# Five sections. Each section runs one or more PubMed searches over the last
+# `lookback_days` (by the date the paper entered PubMed), then candidates are
+# ranked by journal tier and study type so the curator sees the strongest first.
+#
+# To change what gets searched, edit the queries below. Nothing else needs to change.
+
+# The address itself is not stored here. It comes from the REVIEW_EMAIL setting
+# (a GitHub secret in the cloud, or a line in .env locally); see the README.
+email:
+  smtp_server: smtp.gmail.com
+  smtp_port: 587
+
+lookback_days: 7
+
+# ---------------------------------------------------------------------------
+# Who the review is for and how it should be written. Plain English; edit freely.
+# This text is given to Claude along with each section's candidates.
+# ---------------------------------------------------------------------------
+reader_profile: >
+  The reader is a heart failure and advanced transplant cardiologist at an academic
+  medical center who also does research. He wants to keep up with all of medicine and
+  all of cardiology, not just his own niche, and has particular interest in AI in
+  medicine, AI in medical education, and longevity medicine. He reads trials critically
+  and does not need basic concepts explained.
+
+# The Claude model that does the selecting and writing, and how hard it thinks.
+model: claude-opus-5-5
+effort: high
+
+# One-line mentions allowed under each section's full write-ups (0 turns them off).
+max_also_notable: 5
+
+# Hard cap on full write-ups per section in the final report (fewer is fine).
+max_per_section: 5
+
+# How many ranked candidates per section are written out for curation.
+max_candidates: 60
+
+# ---------------------------------------------------------------------------
+# Journal tiers (PubMed journal abbreviations, matched case-insensitively)
+# ---------------------------------------------------------------------------
+journal_tiers:
+  tier1:
+    - N Engl J Med
+    - JAMA
+    - Lancet
+    - BMJ
+    - Nature
+    - Science
+    - Cell
+    - Nat Med
+    - Ann Intern Med
+  tier2:
+    # Cardiology
+    - Circulation
+    - J Am Coll Cardiol
+    - Eur Heart J
+    - JAMA Cardiol
+    - JACC Heart Fail
+    - Eur J Heart Fail
+    - Circ Heart Fail
+    - J Heart Lung Transplant
+    - J Card Fail
+    - Nat Cardiovasc Res
+    - JACC Cardiovasc Interv
+    - Circ Cardiovasc Interv
+    - JACC Cardiovasc Imaging
+    - Heart Rhythm
+    # General / AI
+    - JAMA Intern Med
+    - JAMA Netw Open
+    - NEJM Evid
+    - NEJM AI
+    - Lancet Digit Health
+    - NPJ Digit Med
+    - Nat Mach Intell
+    - Nat Biomed Eng
+    - Radiology
+    - Nat Commun
+    - Sci Transl Med
+    # Medical education
+    - Acad Med
+    - Med Educ
+    - Med Teach
+    - J Grad Med Educ
+    - JMIR Med Educ
+    # Longevity
+    - Nat Aging
+    - Cell Metab
+    - Aging Cell
+    - Geroscience
+    - Lancet Healthy Longev
+    - Nat Metab
+
+# Reusable query fragments (referenced below as {ai_terms}, {top_general})
+fragments:
+  ai_terms: >
+    ("artificial intelligence"[tiab] OR "machine learning"[tiab] OR "deep learning"[tiab]
+    OR "large language model"[tiab] OR "large language models"[tiab] OR "LLM"[tiab]
+    OR "generative AI"[tiab] OR "generative artificial intelligence"[tiab]
+    OR "ChatGPT"[tiab] OR "GPT-4"[tiab] OR "foundation model"[tiab]
+    OR "neural network"[tiab] OR "AI-enabled"[tiab] OR "AI-assisted"[tiab]
+    OR "ambient AI"[tiab] OR "AI scribe"[tiab] OR "chatbot"[tiab])
+  top_general: >
+    ("N Engl J Med"[ta] OR "JAMA"[ta] OR "Lancet"[ta] OR "BMJ"[ta]
+    OR "Nat Med"[ta] OR "Ann Intern Med"[ta] OR "JAMA Intern Med"[ta] OR "NEJM Evid"[ta])
+
+# ---------------------------------------------------------------------------
+# Sections
+# ---------------------------------------------------------------------------
+sections:
+
+  - key: general_medicine
+    title: General Medicine
+    guidance: >
+      The most important clinical research across all of medicine this week, led by
+      NEJM, JAMA, Lancet, BMJ and Annals. Favor practice-changing randomized trials and
+      landmark studies any physician should know. Cardiovascular papers belong in the
+      Cardiology section; include one here only if it is a prevention or primary-care
+      question of broad relevance that Cardiology did not already select.
+    queries:
+      - name: Major general journals (anything with an abstract)
+        query: "{top_general} AND hasabstract"
+        retmax: 250
+
+  - key: cardiology
+    title: Cardiology
+    max_candidates: 90   # the busiest section; give Claude a deeper list
+    guidance: >
+      The whole field: prevention, coronary, structural, electrophysiology, imaging,
+      heart failure, cardiomyopathy. Pick the studies that move the field, wherever they
+      fall. Give modest extra weight to heart failure, advanced heart failure, heart
+      transplantation, mechanical circulatory support, cardiogenic shock and hypertrophic
+      cardiomyopathy: when two papers are close in importance, prefer those; but do not
+      displace a landmark trial for a minor paper in those areas. Use the landscape
+      paragraph to say how the field as a whole is shifting.
+    # Papers matching this pattern get a ranking boost (the reader's own field).
+    emphasis_regex: "hypertrophic cardiomyopathy|\\bHCM\\b|myosin inhibitor|mavacamten|aficamten|heart transplant|cardiac transplant|allograft|ventricular assist|\\bLVAD\\b|mechanical circulatory|cardiogenic shock|advanced heart failure|heart failure"
+    queries:
+      - name: Cardiology in the major general journals
+        query: >
+          ("N Engl J Med"[ta] OR "JAMA"[ta] OR "Lancet"[ta] OR "BMJ"[ta] OR "Nat Med"[ta]
+          OR "Ann Intern Med"[ta] OR "Nature"[ta] OR "Science"[ta])
+          AND (cardio*[tiab] OR cardiac[tiab] OR heart[tiab] OR coronary[tiab]
+          OR myocardial[tiab] OR atrial[tiab] OR ventricular[tiab] OR aortic[tiab]
+          OR hypertension[tiab] OR "blood pressure"[tiab] OR lipid*[tiab]
+          OR cholesterol[tiab] OR stroke[tiab] OR vascular[tiab]) AND hasabstract
+        retmax: 120
+      - name: Leading cardiology journals
+        query: >
+          ("Circulation"[ta] OR "J Am Coll Cardiol"[ta] OR "Eur Heart J"[ta]
+          OR "JAMA Cardiol"[ta] OR "Nat Cardiovasc Res"[ta]
+          OR "JACC Cardiovasc Interv"[ta] OR "Circ Cardiovasc Interv"[ta]
+          OR "JACC Cardiovasc Imaging"[ta] OR "Heart Rhythm"[ta]) AND hasabstract
+        retmax: 250
+      - name: Heart failure and transplant journals
+        query: >
+          ("JACC Heart Fail"[ta] OR "Eur J Heart Fail"[ta] OR "Circ Heart Fail"[ta]
+          OR "J Heart Lung Transplant"[ta] OR "J Card Fail"[ta]) AND hasabstract
+        retmax: 150
+      - name: HCM, advanced HF, transplant and MCS in any journal
+        query: >
+          ("hypertrophic cardiomyopathy"[tiab] OR mavacamten[tiab] OR aficamten[tiab]
+          OR "heart transplantation"[tiab] OR "heart transplant"[tiab]
+          OR "cardiac transplantation"[tiab] OR "cardiac allograft"[tiab]
+          OR "left ventricular assist device"[tiab] OR "LVAD"[tiab]
+          OR "mechanical circulatory support"[tiab] OR "cardiogenic shock"[tiab]
+          OR "advanced heart failure"[tiab]) AND hasabstract
+        sort: relevance
+        retmax: 120
+
+  - key: ai_medicine
+    title: AI in Medicine
+    relevance_regex: "patient|clinical|clinician|physician|diagnos|hospital|health|disease|medical|therap"
+    guidance: >
+      AI that matters to clinical practice. Prefer randomized and prospective evaluations,
+      real deployments, and rigorous external validations over retrospective model-building.
+      Include a major capability advance or a sobering negative result when it changes how
+      a clinician should think about these tools. Skip pure methods or basic-science
+      machine learning with no clinical bearing.
+    queries:
+      - name: AI in high-impact journals
+        query: >
+          {ai_terms} AND ({top_general} OR "Nature"[ta] OR "Science"[ta] OR "Cell"[ta]
+          OR "NEJM AI"[ta] OR "Lancet Digit Health"[ta] OR "NPJ Digit Med"[ta]
+          OR "Nat Mach Intell"[ta] OR "Nat Biomed Eng"[ta] OR "JAMA Netw Open"[ta]
+          OR "Radiology"[ta] OR "Nat Commun"[ta] OR "Circulation"[ta]
+          OR "J Am Coll Cardiol"[ta] OR "Eur Heart J"[ta] OR "JAMA Cardiol"[ta]
+          OR "JAMA Oncol"[ta] OR "JAMA Neurol"[ta] OR "JAMA Psychiatry"[ta]
+          OR "Lancet Oncol"[ta] OR "Gastroenterology"[ta])
+        retmax: 150
+      - name: Prospective and randomized clinical AI in any journal
+        query: >
+          {ai_terms} AND (randomized[tiab] OR randomised[tiab] OR "clinical trial"[tiab]
+          OR "prospective"[tiab] OR "external validation"[tiab] OR "implementation"[tiab])
+          AND (patient*[tiab] OR clinician*[tiab] OR physician*[tiab]) AND hasabstract
+        sort: relevance
+        retmax: 80
+
+  - key: ai_meded
+    title: AI in Medical Education
+    guidance: >
+      AI in the training of physicians: medical students, residents, fellows, and
+      continuing education. Prefer studies with a comparison group and a measured learning
+      or performance outcome, national surveys of policy and practice, and serious work on
+      deskilling and clinical reasoning. Skip single-site attitude surveys and studies
+      that only score a chatbot on exam questions unless unusually well done. This is a
+      thin literature; it is fine to select only one or two papers, or none.
+    queries:
+      - name: AI and medical training in any journal
+        query: >
+          {ai_terms} AND ("medical education"[tiab] OR "medical student"[tiab]
+          OR "medical students"[tiab] OR "residency"[tiab] OR "residents"[tiab]
+          OR "fellowship"[tiab] OR "trainees"[tiab] OR "graduate medical education"[tiab]
+          OR "undergraduate medical education"[tiab] OR "clinical reasoning"[tiab]
+          OR "deskilling"[tiab] OR "board examination"[tiab] OR "USMLE"[tiab]
+          OR "simulation training"[tiab] OR "competency-based"[tiab]
+          OR "Education, Medical"[mh]) AND hasabstract
+        sort: relevance
+        retmax: 120
+      - name: AI in medical education journals
+        query: >
+          {ai_terms} AND ("Acad Med"[ta] OR "Med Educ"[ta] OR "Med Teach"[ta]
+          OR "J Grad Med Educ"[ta] OR "JMIR Med Educ"[ta] OR "BMC Med Educ"[ta]
+          OR "Teach Learn Med"[ta] OR "Perspect Med Educ"[ta] OR "J Surg Educ"[ta]
+          OR "Adv Health Sci Educ Theory Pract"[ta])
+        retmax: 80
+
+  - key: longevity
+    title: Longevity Medicine
+    relevance_regex: "human|adults?|patients?|participants|mice|mouse|murine|cohort|primate|clinical|women|\\bmen\\b"
+    guidance: >
+      Aging biology and its translation: senescence and senolytics, biological-age
+      measures, geroprotective drugs, interventions tested for healthspan in humans.
+      Hold a high bar. Much of this literature is incremental; select only work that is
+      genuinely novel or rigorous, and say plainly when a finding is preclinical or
+      observational. Selecting one or two papers, or none, is fine.
+    queries:
+      - name: Aging biology in leading journals
+        query: >
+          (aging[tiab] OR ageing[tiab] OR longevity[tiab] OR lifespan[tiab]
+          OR healthspan[tiab] OR senescen*[tiab] OR senolytic*[tiab]
+          OR "biological age"[tiab] OR "epigenetic clock"[tiab] OR "geroscience"[tiab]
+          OR rapamycin[tiab] OR "caloric restriction"[tiab] OR "rejuvenation"[tiab])
+          AND ("Nature"[ta] OR "Science"[ta] OR "Cell"[ta] OR "Nat Med"[ta]
+          OR "N Engl J Med"[ta] OR "JAMA"[ta] OR "Lancet"[ta] OR "BMJ"[ta]
+          OR "Nat Aging"[ta] OR "Cell Metab"[ta] OR "Nat Metab"[ta]
+          OR "Sci Transl Med"[ta] OR "Lancet Healthy Longev"[ta]
+          OR "Aging Cell"[ta] OR "Geroscience"[ta] OR "Nat Commun"[ta]
+          OR "JAMA Intern Med"[ta] OR "JAMA Netw Open"[ta]) AND hasabstract
+        retmax: 150
+      - name: Human longevity interventions in any journal
+        query: >
+          (longevity[tiab] OR healthspan[tiab] OR senolytic*[tiab]
+          OR "biological age"[tiab] OR "biological aging"[tiab]
+          OR "epigenetic clock"[tiab] OR "epigenetic age"[tiab] OR geroprotect*[tiab])
+          AND (randomized[tiab] OR randomised[tiab] OR trial[tiab] OR cohort[tiab])
+          AND hasabstract
+        sort: relevance
+        retmax: 80
+
+# Commentary feeds: not studies, just a signal for what the field is talking about.
+# Listed at the bottom of the AI candidates file; never cited as a study.
+signal_feeds:
+  - url: "https://erictopol.substack.com/feed"
+    name: "Ground Truths (Eric Topol)"
