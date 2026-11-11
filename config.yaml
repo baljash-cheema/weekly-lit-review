@@ -32,6 +32,11 @@ effort: high
 # One-line mentions allowed under each section's full write-ups (0 turns them off).
 max_also_notable: 3
 
+# A plain PowerPoint deck is built each week with one slide per FULL write-up in these
+# sections (section keys from the list further down). Empty list = no slides.
+slides:
+  sections: [ai_medicine, ai_meded]
+
 # Hard cap on full write-ups per section in the final report (fewer is fine).
 max_per_section: 5
 

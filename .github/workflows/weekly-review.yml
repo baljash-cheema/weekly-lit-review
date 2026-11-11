@@ -21,7 +21,7 @@ on:
         type: boolean
         default: true
       archive:
-        description: "Save a PDF copy to the archive folder"
+        description: "Save the PDF and slides to the repository"
         type: boolean
         default: true
 
@@ -78,17 +78,24 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python curate.py
 
+      # One plain slide per full write-up in the sections named under `slides` in
+      # config.yaml. No file is produced in a week with none.
+      - name: Build the slide deck
+        if: steps.gate.outputs.run == 'true'
+        run: python make_slides.py
+
       - name: Email the report
         if: steps.gate.outputs.run == 'true' && (github.event_name == 'schedule' || inputs.send_email)
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
           REVIEW_EMAIL_TO: ${{ secrets.REVIEW_EMAIL_TO }}
-        run: python send_email.py reports/review_*.md
+        run: python send_email.py reports/review_*.md --attach $(ls slides/*/review-slides-*.pptx 2>/dev/null | tail -1)
 
       # Print the same formatted page the email uses to a PDF and commit it, so every
-      # week's review stays in the repository under archive/<year>/.
-      - name: Save a PDF copy to the archive
+      # week's review stays in the repository under archive/<year>/. The slide deck, when
+      # there is one, is committed alongside under slides/<year>/.
+      - name: Save the PDF and slides to the repository
         if: steps.gate.outputs.run == 'true' && (github.event_name == 'schedule' || inputs.archive)
         run: |
           report=$(ls reports/review_*.md | head -1)
@@ -103,6 +110,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$out"
+          if [ -d slides ]; then git add slides; fi
           git commit -m "Archive weekly review $day" || echo "No change to archive"
           git pull --rebase --quiet
           git push

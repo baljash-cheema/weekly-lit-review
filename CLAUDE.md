@@ -90,6 +90,14 @@ Each run prints the email's HTML to PDF with headless Chrome and commits it to
 one generated output that is committed on purpose). Because the workflow pushes to
 `main`, run `git pull --rebase` before pushing local changes.
 
+## Slides
+`make_slides.py` builds a plain blank-template deck (python-pptx), one slide per `full`
+write-up in the sections listed under `slides.sections` in `config.yaml` (Josh chose AI
+in Medicine and AI in Medical Education only, 2026-11-11). It reads
+`reports/selection_YYYY-MM-DD.json`, which `curate.py` writes alongside the report. The
+deck is attached to the email and committed to `slides/<year>/`. No deck in a week with
+no full write-ups in those sections.
+
 ## Failure signals
 - GitHub emails Josh when a workflow run fails.
 - Partial failures (one section, a PubMed query) do not stop the email; they appear in

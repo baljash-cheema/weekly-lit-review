@@ -3,7 +3,8 @@ curate.py — Asks Claude (via the API) to pick and write up the week's most imp
 studies in each section, then assembles the report.
 
 Reads   data/candidates.json            (written by collect.py)
-Writes  reports/review_YYYY-MM-DD.md
+Writes  reports/review_YYYY-MM-DD.md       (the report)
+        reports/selection_YYYY-MM-DD.json  (the same selection as data, for slides)
 
 Safeguards against invented content:
   * Claude may only choose PMIDs from the candidate list; anything else is dropped.
@@ -417,8 +418,25 @@ def curate():
     ])
 
     REPORTS_DIR.mkdir(exist_ok=True)
-    path = REPORTS_DIR / f"review_{datetime.now():%Y-%m-%d}.md"
+    day = f"{datetime.now():%Y-%m-%d}"
+    path = REPORTS_DIR / f"review_{day}.md"
     path.write_text(report, encoding="utf-8")
+
+    # The same selection as data, for make_slides.py
+    selection = {"date": day, "window": data["window"], "sections": []}
+    for k in sections:
+        if k not in results:
+            continue
+        result, by_pmid = results[k]
+        keep = ("title", "journal", "authors", "doi", "url")
+        selection["sections"].append({
+            "key": k, "title": sections[k]["title"], "landscape": clean(result["landscape"]),
+            "studies": [dict({f: clean(v) for f, v in s.items()},
+                             **{f: by_pmid[s["pmid"]][f] for f in keep})
+                        for s in result["studies"]],
+        })
+    (REPORTS_DIR / f"selection_{day}.json").write_text(
+        json.dumps(selection, indent=1, ensure_ascii=False), encoding="utf-8")
     print(f"\nwrote {path.relative_to(BASE_DIR)}")
     print(f"API usage: {curator.usage['input']:,} input + {curator.usage['output']:,} output tokens")
     for n in notes:

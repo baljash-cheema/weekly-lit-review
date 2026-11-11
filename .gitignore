@@ -12,6 +12,7 @@ data/*.md
 # Generated reports
 reports/*.md
 reports/*.html
+reports/*.json
 
 # Python
 __pycache__/

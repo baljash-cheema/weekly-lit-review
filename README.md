@@ -87,10 +87,12 @@ collect.py      Searches PubMed for each section (papers added in the last 7 day
 curate.py       Sends each section's candidates to Claude, which selects and writes
                 up the studies. Runs the checks above and assembles the report.
 send_email.py   Converts the report to a formatted email and sends it through Gmail.
+make_slides.py  Builds a plain PowerPoint deck: one slide per full write-up in the
+                sections you choose (set under `slides` in config.yaml).
 ```
 
-`.github/workflows/weekly-review.yml` runs those three steps every Friday, then saves a
-PDF copy of the review to `archive/`.
+`.github/workflows/weekly-review.yml` runs those steps every Friday, attaches the deck
+to the email, and saves a PDF of the review to `archive/` and the deck to `slides/`.
 
 ## Set up your own
 
