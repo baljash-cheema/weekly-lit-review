@@ -30,7 +30,7 @@ model: claude-opus-5-5
 effort: high
 
 # One-line mentions allowed under each section's full write-ups (0 turns them off).
-max_also_notable: 5
+max_also_notable: 3
 
 # Hard cap on full write-ups per section in the final report (fewer is fine).
 max_per_section: 5

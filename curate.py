@@ -82,9 +82,11 @@ this week for it, already filtered and roughly ranked by journal and study desig
 ranking is mechanical; your judgment about importance overrides it.
 
 Your job is to choose what genuinely matters and say why. The reader wants the most \
-important studies, not a fixed quota. Select at most {max_studies} for a full write-up. \
-Fewer is good when the week is thin, and an empty list is the right answer when nothing \
-clears the bar. Prefer primary research that changes practice or understanding: \
+important studies, not a fixed quota, and he reads this over coffee, so brevity matters \
+as much as judgment. Select at most {max_studies} for a full write-up. That number is a \
+ceiling for an exceptional week, not a target: an ordinary week has two to four studies \
+worth his time in a busy field and one or two in a thin one, and an empty list is the \
+right answer when nothing clears the bar. Prefer primary research that changes practice or understanding: \
 randomized trials, landmark cohorts, guidelines, first-in-class results, and rigorous \
 negative trials. Secondary analyses, narrative reviews and small single-centre studies \
 rarely belong unless they answer a question the field has been asking.
@@ -96,39 +98,44 @@ area: the clinical disease area or the technology under study, in a short phrase
 study_type: the design in a few words, with size when the abstract gives it (for example \
 "Double-blind RCT, 8,350 patients" or "Registry cohort, 11,474 transplant recipients").
 
-key_finding: one to three sentences stating what the study found, with the primary \
-endpoint result and effect size. Use only what the abstract states. Every number you give \
+key_finding: one or two sentences, 45 words at most, stating what the study found, with \
+the primary endpoint result and effect size. Leave out secondary endpoints unless one \
+changes the interpretation. Use only what the abstract states. Every number you give \
 must appear in the abstract exactly as written there; your numbers are checked \
 automatically against it. If the abstract provided is cut off before the results, say \
 what was tested and that the results were not available in the abstract rather than \
 supplying them from memory.
 
-context: two to four sentences placing the study against what was already known and \
-saying how it should change the reader's thinking: what question it settles or reopens, \
-which earlier trials or guideline positions it confirms or contradicts, what its main \
-limitation is, and what it means for practice. This is the part the reader values most, \
+context: two or three sentences, 65 words at most, placing the study against what was \
+already known and saying how it should change the reader's thinking. Choose the two or \
+three points that matter most from: the question it settles or reopens, the earlier \
+trials or guideline positions it confirms or contradicts, its main limitation, and what \
+it means for practice. Do not try to cover all of them. This is the part the reader values most, \
 and it draws on your own knowledge of the literature. Name an earlier trial only when \
 you are confident of its name and of what it showed; when you are less sure, describe \
 the prior evidence in general terms. Wrong context is worse than general context. Do \
 not restate the finding here.
 
-landscape: three to five sentences opening the section, on what this week's papers taken \
-together say about where the field is heading. Write it for someone who will read only \
-this paragraph. If nothing was selected, say in a sentence that it was a quiet week and \
+landscape: two or three sentences, 70 words at most, opening the section, on what this \
+week's papers taken together say about where the field is heading. Write it for someone \
+who will read only this paragraph. Refer to studies by drug, trial name or topic, never \
+by PMID. If nothing was selected, say in a sentence that it was a quiet week and \
 what kind of work was published instead.
 
-also_notable: up to {max_notable} further papers worth one line each, for weeks with more \
-important work than fits. Each note is a single sentence giving the result or the reason \
-it matters. Leave the list empty in an ordinary week.
+also_notable: up to {max_notable} further papers worth one line each, only for weeks with \
+more genuinely important work than fits above, such as a major conference week. Each note \
+is a single sentence of 25 words at most giving the result. Leave the list empty in an \
+ordinary week, and never use it for papers that simply did not make the cut.
 
-Write in plain, direct clinical prose, as one colleague briefing another. No hype, no \
-filler, no markdown formatting inside the fields. Refer to papers only by the PMIDs \
-given in the candidate list."""
+Write in plain, direct clinical prose, as one colleague briefing another, in American \
+English. No hype, no filler, no markdown formatting inside the fields. The word limits \
+are firm. The pmid fields must hold PMIDs from the candidate list; do not write PMIDs \
+anywhere in the prose."""
 
 OVERVIEW_PROMPT = """Below is this week's finished literature review. Write the short \
-opening that goes above it: four to six sentences telling the reader what mattered most \
-this week across all the sections and why, leading with the single most important \
-development. Mention only studies that appear in the review, and add no numbers that are \
+opening that goes above it: three or four sentences, 100 words at most, telling the \
+reader what mattered most this week and why, leading with the single most important \
+development. It is a headline, not a summary of every section. Mention only studies that appear in the review, and add no numbers that are \
 not in it. Plain prose in one paragraph, no heading, no markdown.
 
 <review>
@@ -211,9 +218,9 @@ NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
 
 
 def _normalise(text):
-    # Lancet-style mid-dot decimals, thousands separators, thin spaces
-    text = text.replace("·", ".").replace(" ", "").replace(" ", "")
-    return re.sub(r"(?<=\d),(?=\d{3})", "", text)
+    # Lancet-style mid-dot decimals; thousands split by comma or any kind of space
+    text = text.replace("\u00b7", ".")
+    return re.sub(r"(?<=\d)[,\u0020\u00a0\u2009\u202f](?=\d{3}(?!\d))", "", text)
 
 
 def unsupported_numbers(finding, abstract):
@@ -223,7 +230,9 @@ def unsupported_numbers(finding, abstract):
 
 
 def clean(text):
-    return " ".join(str(text).split())
+    # Drop stray "(12345678)" PMID references from prose
+    text = re.sub(r"\s*\((?:PMIDs?:?\s*)?\d{8}(?:\s*[,;]\s*\d{8})*\)", "", str(text))
+    return " ".join(text.split())
 
 
 # ---------------------------------------------------------------------------
