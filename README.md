@@ -165,3 +165,7 @@ python send_email.py reports/review_*.md
 - GitHub may start scheduled runs several minutes late.
 - `retrospective_collect.py` and `retrospective_curate_prep.py` are an older, separate
   tool for month-by-month look-backs and are not part of the weekly run.
+
+## License
+
+MIT. See [LICENSE](LICENSE). You are free to use, copy and adapt this.
