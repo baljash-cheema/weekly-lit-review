@@ -84,6 +84,12 @@ same values live in `.env` (gitignored; see `.env.example`). Never commit them.
 **This repository is public.** Do not commit email addresses, credentials, local file
 paths, reports, or collected data. Git commits use the GitHub no-reply address.
 
+## Archive
+Each run prints the email's HTML to PDF with headless Chrome and commits it to
+`archive/<year>/weekly-review-YYYY-MM-DD.pdf` (Josh asked for this 2026-11-11; it is the
+one generated output that is committed on purpose). Because the workflow pushes to
+`main`, run `git pull --rebase` before pushing local changes.
+
 ## Failure signals
 - GitHub emails Josh when a workflow run fails.
 - Partial failures (one section, a PubMed query) do not stop the email; they appear in

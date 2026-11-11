@@ -20,9 +20,13 @@ on:
         description: "Email the report"
         type: boolean
         default: true
+      archive:
+        description: "Save a PDF copy to the archive folder"
+        type: boolean
+        default: true
 
 permissions:
-  contents: read
+  contents: write  # to save each week's PDF into archive/
   actions: write   # only used by the keep-alive step below
 
 jobs:
@@ -81,6 +85,27 @@ jobs:
           REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
           REVIEW_EMAIL_TO: ${{ secrets.REVIEW_EMAIL_TO }}
         run: python send_email.py reports/review_*.md
+
+      # Print the same formatted page the email uses to a PDF and commit it, so every
+      # week's review stays in the repository under archive/<year>/.
+      - name: Save a PDF copy to the archive
+        if: steps.gate.outputs.run == 'true' && (github.event_name == 'schedule' || inputs.archive)
+        run: |
+          report=$(ls reports/review_*.md | head -1)
+          day=$(basename "$report" .md | sed 's/^review_//')
+          out="archive/${day%%-*}/weekly-review-$day.pdf"
+          mkdir -p "$(dirname "$out")"
+          python send_email.py "$report" --html "$RUNNER_TEMP/review.html"
+          chrome=$(command -v google-chrome || command -v chromium-browser || command -v chromium)
+          "$chrome" --headless=new --no-sandbox --disable-gpu --no-pdf-header-footer \
+            --print-to-pdf="$out" "file://$RUNNER_TEMP/review.html"
+          test -s "$out"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$out"
+          git commit -m "Archive weekly review $day" || echo "No change to archive"
+          git pull --rebase --quiet
+          git push
 
       - name: Keep a copy of the report
         if: steps.gate.outputs.run == 'true' && always()

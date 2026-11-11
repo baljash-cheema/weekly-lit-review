@@ -89,7 +89,8 @@ curate.py       Sends each section's candidates to Claude, which selects and wri
 send_email.py   Converts the report to a formatted email and sends it through Gmail.
 ```
 
-`.github/workflows/weekly-review.yml` runs those three steps every Friday.
+`.github/workflows/weekly-review.yml` runs those three steps every Friday, then saves a
+PDF copy of the review to `archive/`.
 
 ## Set up your own
 
@@ -169,8 +170,9 @@ python send_email.py reports/review_*.md
   reports.
 - **It is a reading aid, not medical advice**, and not a substitute for reading the
   papers that matter to your practice.
-- **Reports are kept as run artifacts** for 90 days. In a public repository, anyone
-  signed in to GitHub can download them. They contain only the literature review.
+- **Every review is archived as a PDF** in [`archive/`](archive/), committed by the
+  weekly run. If your repository is public, so is the archive. To keep reviews private,
+  make the repository private or remove the "Save a PDF copy" step from the workflow.
 - GitHub may start scheduled runs several minutes late.
 - `retrospective_collect.py` and `retrospective_curate_prep.py` are an older, separate
   tool for month-by-month look-backs and are not part of the weekly run.
