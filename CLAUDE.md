@@ -22,8 +22,13 @@ directly; it does **not** depend on his Mac or on a Claude Code session.
 Rules Josh set (2026-11-11):
 - **No quota.** Only the most important studies. At most 5 full write-ups per section;
   fewer, or none, is fine (especially longevity and AI in medical education).
-- Each study gets: **Area** (disease area or technology), **study type + key finding**,
-  and **Context** (how it sits against prior evidence and how to think about it).
+- Section order: Cardiology, AI in Medicine, AI in Medical Education, Longevity, then
+  General Medicine last.
+- The first four are detailed: strong studies get **Area**, **Design**, **Results**
+  (numbers-heavy) and **Context**; studies of modest quality or impact get a short
+  streamlined summary instead (the model chooses `depth: full | brief`).
+- General Medicine is a themes digest (`style: themes`): a paragraph on the week's major
+  themes plus one-line studies.
 - Each section opens with a short "landscape" paragraph on how the field is shifting.
 - Delivered **Friday 7:30 am Central** to the address in the `REVIEW_EMAIL` secret.
 
@@ -44,7 +49,7 @@ daylight-saving state; a gate step keeps the one that is 6:55 am in Chicago).
 ### Guards against invented content (keep these if you change curate.py)
 - Claude can only pick PMIDs from the candidate list; others are dropped and noted.
 - Title, authors, journal, links are filled from PubMed data, never model output.
-- Every number in a Finding line must appear in the abstract; misses are listed in the
+- Every number in a Design or Results line must appear in the abstract; misses are listed in the
   report's Verification Notes.
 - Context lines come from model knowledge and are labelled as not machine-verified.
 - Each paper appears in one section only (curation order: cardiology, AI, AI med ed,

@@ -8,7 +8,7 @@ Writes  reports/review_YYYY-MM-DD.md
 Safeguards against invented content:
   * Claude may only choose PMIDs from the candidate list; anything else is dropped.
   * Titles, authors, journals and links are filled in from PubMed data, never by Claude.
-  * Every number in a "Finding" line is checked against the abstract; mismatches are
+  * Every number in a Design or Results line is checked against the abstract; mismatches are
     listed under Verification Notes.
 
 Usage:
@@ -48,12 +48,14 @@ SECTION_SCHEMA = {
                 "type": "object",
                 "properties": {
                     "pmid": {"type": "string"},
+                    "depth": {"type": "string", "enum": ["full", "brief"]},
                     "area": {"type": "string"},
                     "study_type": {"type": "string"},
-                    "key_finding": {"type": "string"},
+                    "design": {"type": "string"},
+                    "results": {"type": "string"},
                     "context": {"type": "string"},
                 },
-                "required": ["pmid", "area", "study_type", "key_finding", "context"],
+                "required": ["pmid", "depth", "area", "study_type", "design", "results", "context"],
                 "additionalProperties": False,
             },
         },
@@ -82,55 +84,85 @@ this week for it, already filtered and roughly ranked by journal and study desig
 ranking is mechanical; your judgment about importance overrides it.
 
 Your job is to choose what genuinely matters and say why. The reader wants the most \
-important studies, not a fixed quota, and he reads this over coffee, so brevity matters \
-as much as judgment. Select at most {max_studies} for a full write-up. That number is a \
+important studies, not a fixed quota. Select at most {max_studies}. That number is a \
 ceiling for an exceptional week, not a target: an ordinary week has two to four studies \
 worth his time in a busy field and one or two in a thin one, and an empty list is the \
-right answer when nothing clears the bar. Prefer primary research that changes practice or understanding: \
-randomized trials, landmark cohorts, guidelines, first-in-class results, and rigorous \
-negative trials. Secondary analyses, narrative reviews and small single-centre studies \
-rarely belong unless they answer a question the field has been asking.
+right answer when nothing clears the bar. Prefer primary research that changes practice \
+or understanding: randomized trials, landmark cohorts, guidelines, first-in-class \
+results, and rigorous negative trials. Secondary analyses, narrative reviews and small \
+single-center studies rarely belong unless they answer a question the field has been \
+asking.
 
-For each selected study write four things.
+Each selected study gets one of two treatments, and choosing between them is part of \
+your editorial judgment.
 
-area: the clinical disease area or the technology under study, in a short phrase.
+depth "full" is for studies that are both rigorous and consequential: the ones he would \
+want to be able to discuss in detail. He reads trials critically and wants the actual \
+data, so be specific and quantitative. Fill in:
 
-study_type: the design in a few words, with size when the abstract gives it (for example \
-"Double-blind RCT, 8,350 patients" or "Registry cohort, 11,474 transplant recipients").
+- area: the clinical disease area or the technology under study, in a short phrase.
+- study_type: the design in a few words with total size, such as "Double-blind RCT, \
+8,350 patients".
+- design: one or two sentences, 50 words at most, on who was studied, what was compared \
+(with doses or targets), the primary endpoint, and follow-up duration.
+- results: two to four sentences, 100 words at most. Give the primary endpoint with event \
+rates or absolute values in each arm, the effect estimate with its confidence interval \
+or P value, then the secondary, subgroup or safety results that matter for \
+interpretation, each with its numbers. Prefer numbers to adjectives.
+- context: two or three sentences, 65 words at most, placing the study against what was \
+already known and saying how it should change his thinking. Choose the two or three \
+points that matter most from: the question it settles or reopens, the earlier trials or \
+guideline positions it confirms or contradicts, its main limitation, and what it means \
+for practice.
 
-key_finding: one or two sentences, 45 words at most, stating what the study found, with \
-the primary endpoint result and effect size. Leave out secondary endpoints unless one \
-changes the interpretation. Use only what the abstract states. Every number you give \
-must appear in the abstract exactly as written there; your numbers are checked \
-automatically against it. If the abstract provided is cut off before the results, say \
-what was tested and that the results were not available in the abstract rather than \
-supplying them from memory.
+depth "brief" is for studies worth knowing about whose quality or impact is more \
+modest: a small or single-center trial, an observational or preclinical finding, a \
+secondary analysis, a survey, an early-phase result. Fill in area and study_type as \
+above, put a streamlined summary in results (one or two sentences, 45 words at most, \
+saying what was done, the headline number, and the caveat that keeps it from being a \
+bigger deal), and leave design and context as empty strings.
 
-context: two or three sentences, 65 words at most, placing the study against what was \
-already known and saying how it should change the reader's thinking. Choose the two or \
-three points that matter most from: the question it settles or reopens, the earlier \
-trials or guideline positions it confirms or contradicts, its main limitation, and what \
-it means for practice. Do not try to cover all of them. This is the part the reader values most, \
-and it draws on your own knowledge of the literature. Name an earlier trial only when \
-you are confident of its name and of what it showed; when you are less sure, describe \
-the prior evidence in general terms. Wrong context is worse than general context. Do \
-not restate the finding here.
+Rules for design and results at either depth: use only what the abstract states. Every \
+number you give must appear in the abstract exactly as written there; your numbers are \
+checked automatically against it, so do not round, convert units or compute differences \
+yourself. If the abstract provided is cut off before the results, say what was tested \
+and that the results were not available in the abstract rather than supplying them from \
+memory.
+
+The context field is the one place that draws on your own knowledge of the literature. \
+Name an earlier trial only when you are confident of its name and of what it showed; \
+when you are less sure, describe the prior evidence in general terms. Wrong context is \
+worse than general context. Do not restate the results there.
 
 landscape: two or three sentences, 70 words at most, opening the section, on what this \
 week's papers taken together say about where the field is heading. Write it for someone \
-who will read only this paragraph. Refer to studies by drug, trial name or topic, never \
-by PMID. If nothing was selected, say in a sentence that it was a quiet week and \
-what kind of work was published instead.
+who will read only this paragraph. If nothing was selected, say in a sentence that it \
+was a quiet week and what kind of work was published instead.
 
 also_notable: up to {max_notable} further papers worth one line each, only for weeks with \
 more genuinely important work than fits above, such as a major conference week. Each note \
 is a single sentence of 25 words at most giving the result. Leave the list empty in an \
 ordinary week, and never use it for papers that simply did not make the cut.
 
+A request may include a section_format block that changes these instructions for that \
+section; where it does, follow it.
+
 Write in plain, direct clinical prose, as one colleague briefing another, in American \
 English. No hype, no filler, no markdown formatting inside the fields. The word limits \
 are firm. The pmid fields must hold PMIDs from the candidate list; do not write PMIDs \
-anywhere in the prose."""
+anywhere in the prose, and refer to studies there by drug, trial name or topic."""
+
+THEMES_FORMAT = """This section is a themes digest, not a set of detailed write-ups. The \
+reader wants to know what is happening across medicine without the trial-level detail.
+
+landscape: this is the heart of the section. Write up to 160 words organized around the \
+two to four major themes in this week's important papers, naming the studies that carry \
+each theme and saying in a clause what each showed. Qualitative is fine here; give a \
+number only where it is the point.
+
+studies: mark every one depth "brief". In results give a single sentence, 30 words at \
+most, saying what the study is and its headline result. Leave design and context empty. \
+Leave also_notable empty."""
 
 OVERVIEW_PROMPT = """Below is this week's finished literature review. Write the short \
 opening that goes above it: three or four sentences, 100 words at most, telling the \
@@ -200,6 +232,8 @@ def candidate_block(a):
 def section_request(section, candidates, taken):
     lines = [f"Section: {section['title']}", "", "<section_guidance>",
              " ".join(section.get("guidance", "").split()), "</section_guidance>", ""]
+    if section.get("style") == "themes":
+        lines += ["<section_format>", THEMES_FORMAT, "</section_format>", ""]
     if taken:
         lines += ["These papers were already selected for other sections of this week's "
                   "review and must not be selected again here:",
@@ -243,18 +277,22 @@ def render_section(title, result, by_pmid):
     out = [f"## {title}", "", clean(result["landscape"]), ""]
     for s in result["studies"]:
         a = by_pmid[s["pmid"]]
-        doi = f" · [DOI](https://doi.org/{a['doi']})" if a["doi"] else ""
-        out += [
-            f"### [{a['title'].rstrip('.')}]({a['url']})",
-            f"*{a['journal']} · {a['authors']} · {clean(s['study_type'])}*{doi}",
-            "",
-            f"**Area:** {clean(s['area'])}",
-            "",
-            f"**Finding:** {clean(s['key_finding'])}",
-            "",
-            f"**Context:** {clean(s['context'])}",
-            "",
-        ]
+        name = a["title"].rstrip(".")
+        if s["depth"] == "full":
+            doi = f" · [DOI](https://doi.org/{a['doi']})" if a["doi"] else ""
+            out += [f"### [{name}]({a['url']})",
+                    f"*{a['journal']} · {a['authors']} · {clean(s['study_type'])}*{doi}", "",
+                    f"**Area:** {clean(s['area'])}", ""]
+            if clean(s["design"]):
+                out += [f"**Design:** {clean(s['design'])}", ""]
+            out += [f"**Results:** {clean(s['results'])}", ""]
+            if clean(s["context"]):
+                out += [f"**Context:** {clean(s['context'])}", ""]
+        else:
+            tail = " ".join(x for x in (clean(s["results"]), clean(s["context"])) if x)
+            out += [f"**[{name}]({a['url']})**  ",
+                    f"*{a['journal']} · {clean(s['study_type'])} · {clean(s['area'])}*  ",
+                    tail, ""]
     if result["also_notable"]:
         out += ["**Also notable**", ""]
         for n in result["also_notable"]:
@@ -324,12 +362,12 @@ def curate():
 
         for s in result["studies"]:
             a = by_pmid[s["pmid"]]
-            bad = unsupported_numbers(s["key_finding"], a["abstract"])
+            bad = unsupported_numbers(f"{s['design']} {s['results']}", a["abstract"])
             if bad:
-                notes.append(f"{section['title']}, PMID {s['pmid']}: the Finding line cites "
+                notes.append(f"{section['title']}, PMID {s['pmid']}: the write-up cites "
                              f"{', '.join(bad)}, not found verbatim in the PubMed abstract. "
                              "Check against the paper.")
-            print(f"  + {a['journal']}: {a['title'][:90]}")
+            print(f"  + [{s['depth']}] {a['journal']}: {a['title'][:90]}")
         results[key] = (result, by_pmid)
 
     body = "\n".join(render_section(sections[k]["title"], *results[k])
@@ -350,7 +388,7 @@ def curate():
     verification = [
         f"{total} candidate papers screened from PubMed; {n_studies} selected for full write-up.",
         "Every selected PMID, title, author list and journal is taken directly from PubMed. "
-        "Finding lines are drawn from the abstract and their numbers checked against it "
+        "Design and Results lines are drawn from the abstract and their numbers checked against it "
         "automatically. Context lines reflect the model's knowledge of the prior literature "
         "and are not machine-verified.",
     ] + (notes or ["No discrepancies flagged."])

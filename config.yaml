@@ -110,20 +110,11 @@ fragments:
 # ---------------------------------------------------------------------------
 # Sections
 # ---------------------------------------------------------------------------
+# The report prints sections in the order they appear here.
+# style: detailed (default) = full write-ups with design, results and context, and
+#                             short summaries for lesser studies.
+#        themes             = a themes paragraph plus one-line studies.
 sections:
-
-  - key: general_medicine
-    title: General Medicine
-    guidance: >
-      The most important clinical research across all of medicine this week, led by
-      NEJM, JAMA, Lancet, BMJ and Annals. Favor practice-changing randomized trials and
-      landmark studies any physician should know. Cardiovascular papers belong in the
-      Cardiology section; include one here only if it is a prevention or primary-care
-      question of broad relevance that Cardiology did not already select.
-    queries:
-      - name: Major general journals (anything with an abstract)
-        query: "{top_general} AND hasabstract"
-        retmax: 250
 
   - key: cardiology
     title: Cardiology
@@ -260,6 +251,20 @@ sections:
           AND hasabstract
         sort: relevance
         retmax: 80
+
+  - key: general_medicine
+    title: General Medicine
+    style: themes   # themes-led digest with one-line studies, not full write-ups
+    guidance: >
+      The most important clinical research across all of medicine this week, led by
+      NEJM, JAMA, Lancet, BMJ and Annals. Favor practice-changing randomized trials and
+      landmark studies any physician should know. Cardiovascular papers belong in the
+      Cardiology section; include one here only if it is a prevention or primary-care
+      question of broad relevance that Cardiology did not already select.
+    queries:
+      - name: Major general journals (anything with an abstract)
+        query: "{top_general} AND hasabstract"
+        retmax: 250
 
 # Commentary feeds: not studies, just a signal for what the field is talking about.
 # Listed at the bottom of the AI candidates file; never cited as a study.

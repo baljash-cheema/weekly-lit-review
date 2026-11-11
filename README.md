@@ -14,22 +14,30 @@ others can copy it and point it at their own field.
 
 ## What the email looks like
 
-Five sections, each opening with a short paragraph on how the field is shifting, then
-the selected studies in this form:
+Five sections, each opening with a short paragraph on how the field is shifting. The
+strongest studies get a full write-up:
 
 > ### Title of the paper (linked to PubMed)
 > *Journal · Authors · Study design and size* · DOI
 >
 > **Area:** the disease area or technology under study
 >
-> **Finding:** the primary result and effect size, taken from the abstract
+> **Design:** who was studied, what was compared, the primary endpoint, follow-up
+>
+> **Results:** the primary result with event rates and effect size, then the secondary
+> and safety findings that matter, all taken from the abstract
 >
 > **Context:** how this sits against what was already known, what it settles or
 > reopens, its main limitation, and what it means for practice
 
-My sections are general medicine, cardiology (with extra weight on heart failure,
-transplant and hypertrophic cardiomyopathy), AI in medicine, AI in medical education,
-and longevity medicine. All of that is configuration, not code.
+Studies worth knowing about but of more modest quality or impact get two lines instead.
+A section can also be set to a "themes" style, which gives a paragraph on the week's
+major themes and one line per study.
+
+My sections are cardiology (with extra weight on heart failure, transplant and
+hypertrophic cardiomyopathy), AI in medicine, AI in medical education, longevity
+medicine, and a themes digest of general medicine. All of that is configuration, not
+code.
 
 ## Design choices
 
@@ -51,7 +59,7 @@ so the program limits where that can happen:
 - Claude can only choose papers from the list PubMed returned that week. Anything else
   is dropped.
 - Titles, authors, journals and links are copied from PubMed, never written by the model.
-- Every number in a Finding line is checked against the abstract. Any that don't appear
+- Every number in a Design or Results line is checked against the abstract. Any that don't appear
   there are listed at the bottom of the email.
 - The Context lines come from the model's own knowledge of the literature and are
   **not** machine-verified. The email says so. Treat them as a colleague's take and
@@ -124,7 +132,8 @@ Open `config.yaml` and edit:
 
 - `reader_profile`: who the review is for.
 - `sections`: each has a `title`, a `guidance` paragraph telling Claude what to favor,
-  and one or more PubMed `queries`. Add, remove or rewrite sections freely. PubMed
+  an optional `style` (`detailed` or `themes`), and one or more PubMed `queries`. The
+  report prints sections in the order they appear. Add, remove or rewrite sections freely. PubMed
   queries use the same syntax as the PubMed website's search box.
 - `journal_tiers`: which journals rank highest.
 - `max_per_section`, `lookback_days`, `model`.
