@@ -374,6 +374,7 @@ def curate():
                      for k in sections if k in results)
 
     n_studies = sum(len(r["studies"]) for r, _ in results.values())
+    n_full = sum(s["depth"] == "full" for r, _ in results.values() for s in r["studies"])
     overview = ""
     if n_studies:
         try:
@@ -386,7 +387,8 @@ def curate():
 
     total = sum(len(v) for v in data["sections"].values())
     verification = [
-        f"{total} candidate papers screened from PubMed; {n_studies} selected for full write-up.",
+        f"{total} candidate papers screened from PubMed; {n_studies} selected "
+        f"({n_full} with a full write-up).",
         "Every selected PMID, title, author list and journal is taken directly from PubMed. "
         "Design and Results lines are drawn from the abstract and their numbers checked against it "
         "automatically. Context lines reflect the model's knowledge of the prior literature "
