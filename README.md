@@ -27,8 +27,8 @@ strongest studies get a full write-up:
 > **Results:** the primary result with event rates and effect size, then the secondary
 > and safety findings that matter, all taken from the abstract
 >
-> **Context:** how this sits against what was already known, what it settles or
-> reopens, its main limitation, and what it means for practice
+> **Context:** the major takeaway, then how it sits against what was already known,
+> what it settles or reopens, its main limitation, and what it means for practice
 
 Studies worth knowing about but of more modest quality or impact get two lines instead.
 A section can also be set to a "themes" style, which gives a paragraph on the week's

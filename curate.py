@@ -109,11 +109,14 @@ data, so be specific and quantitative. Fill in:
 rates or absolute values in each arm, the effect estimate with its confidence interval \
 or P value, then the secondary, subgroup or safety results that matter for \
 interpretation, each with its numbers. Prefer numbers to adjectives.
-- context: two or three sentences, 65 words at most, placing the study against what was \
-already known and saying how it should change his thinking. Choose the two or three \
-points that matter most from: the question it settles or reopens, the earlier trials or \
-guideline positions it confirms or contradicts, its main limitation, and what it means \
-for practice.
+- context: three or four sentences, 90 words at most, that can be read on their own. \
+Open with the major takeaway: what the trial showed, in plain words, with its single \
+headline number if one carries the point. Then build the rest around that result: how it \
+sits against what was already known, and how it should change his thinking. Choose the \
+two or three points that matter most from: the question it settles or reopens, the \
+earlier trials or guideline positions it confirms or contradicts, its main limitation, \
+and what it means for practice. The takeaway should be woven into the argument, not a \
+repeat of the Results line; any number about this study must be one the abstract states.
 
 depth "brief" is for studies worth knowing about whose quality or impact is more \
 modest: a small or single-center trial, an observational or preclinical finding, a \
@@ -132,7 +135,7 @@ memory.
 The context field is the one place that draws on your own knowledge of the literature. \
 Name an earlier trial only when you are confident of its name and of what it showed; \
 when you are less sure, describe the prior evidence in general terms. Wrong context is \
-worse than general context. Do not restate the results there.
+worse than general context.
 
 landscape: two or three sentences, 70 words at most, opening the section, on what this \
 week's papers taken together say about where the field is heading. Write it for someone \
