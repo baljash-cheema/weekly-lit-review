@@ -1,16 +1,22 @@
 name: Weekly literature review
 
 # Runs every Friday morning and emails the review, aiming to land by 7:30 am Central.
-# GitHub schedules are in UTC and do not follow daylight saving, so there are two
-# entries and the first step keeps whichever one is 6:55 am in Chicago right now.
-# GitHub can start scheduled jobs several minutes late; the 6:55 start leaves room.
+# GitHub schedules are in UTC and do not follow daylight saving, and GitHub sometimes
+# starts scheduled jobs late or skips them altogether (it skipped both on 2026-11-13).
+# So there are several entries through the morning, and the gate step lets exactly one
+# of them do the work: the first that starts at or after 6:50 am in Chicago on a day
+# whose review has not been saved to archive/ yet. The rest stop within seconds.
 #
 # To run it by hand: GitHub -> Actions -> Weekly literature review -> Run workflow.
 
 on:
   schedule:
-    - cron: "55 11 * * 5"   # 6:55 am Central, daylight time (Mar-Nov)
-    - cron: "55 12 * * 5"   # 6:55 am Central, standard time (Nov-Mar)
+    - cron: "55 11 * * 5"   # 6:55 am Central in daylight time (too early in winter; skipped)
+    - cron: "55 12 * * 5"   # 6:55 am Central in standard time; backup in summer
+    - cron: "25 13 * * 5"   # backup
+    - cron: "55 13 * * 5"   # backup
+    - cron: "55 14 * * 5"   # backup
+    - cron: "55 16 * * 5"   # last backup (late morning Central)
   workflow_dispatch:
     inputs:
       days:
@@ -29,6 +35,12 @@ permissions:
   contents: write  # to save each week's PDF into archive/
   actions: write   # only used by the keep-alive step below
 
+# One run at a time, so a backup that starts while the main run is still working waits
+# and then sees the saved review instead of sending a second email.
+concurrency:
+  group: weekly-review
+  cancel-in-progress: false
+
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -43,20 +55,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/weekly-review.yml/enable"
 
-      - name: Keep only the run that matches Chicago time
+      - uses: actions/checkout@v4
+
+      # Scheduled runs only. Manual runs always go ahead.
+      - name: Decide whether this run should do the work
         id: gate
         run: |
-          zone=$(TZ=America/Chicago date +%Z)
           run=true
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            if [ "${{ github.event.schedule }}" = "55 11 * * 5" ] && [ "$zone" != "CDT" ]; then run=false; fi
-            if [ "${{ github.event.schedule }}" = "55 12 * * 5" ] && [ "$zone" != "CST" ]; then run=false; fi
+            now=$(TZ=America/Chicago date +%H%M)
+            today=$(date -u +%F)   # same clock curate.py uses to date the report
+            saved="archive/${today%%-*}/weekly-review-$today.pdf"
+            if [ "$((10#$now))" -lt 650 ]; then
+              echo "It is $now in Chicago, before 6:50 am. Leaving it to the next entry."
+              run=false
+            elif [ -f "$saved" ]; then
+              echo "Today's review is already saved ($saved). Nothing to do."
+              run=false
+            fi
           fi
-          echo "Chicago zone: $zone, run: $run"
+          echo "run: $run"
           echo "run=$run" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/checkout@v4
-        if: steps.gate.outputs.run == 'true'
 
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.run == 'true'
