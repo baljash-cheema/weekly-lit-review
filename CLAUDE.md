@@ -43,8 +43,11 @@ curate.py    One Claude API call per section: choose + write up; one more for th
 send_email.py  Markdown -> HTML, Gmail SMTP
 ```
 
-Scheduled by `.github/workflows/weekly-review.yml` (two cron lines, one per
-daylight-saving state; a gate step keeps the one that is 6:55 am in Chicago).
+Scheduled by `.github/workflows/weekly-review.yml`. There are several cron lines through
+Friday morning because GitHub can start scheduled jobs late or skip them (on 2026-11-13,
+the first scheduled Friday, it started none). A gate step lets the first one at or after
+6:50 am in Chicago do the work; later ones stop when they find that day's PDF in
+`archive/`. Do not cut this back to a single cron line.
 
 ### Guards against invented content (keep these if you change curate.py)
 - Claude can only pick PMIDs from the candidate list; others are dropped and noted.
