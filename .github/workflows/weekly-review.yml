@@ -184,6 +184,7 @@ jobs:
           path: |
             reports/review_*.md
             reports/lesson_*.md
+            reports/lesson_*.json
           if-no-files-found: ignore
           retention-days: 90
 

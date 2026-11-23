@@ -75,11 +75,21 @@ LESSON_SCHEMA = {
                 "properties": {
                     "heading": {"type": "string"},
                     "paragraphs": {"type": "array", "items": {"type": "string"}},
-                    "table_columns": {"type": "array", "items": {"type": "string"}},
-                    "table_rows": {"type": "array",
-                                   "items": {"type": "array", "items": {"type": "string"}}},
                 },
-                "required": ["heading", "paragraphs", "table_columns", "table_rows"],
+                "required": ["heading", "paragraphs"],
+                "additionalProperties": False,
+            },
+        },
+        "tables": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "after_section": {"type": "string"},
+                    "columns": {"type": "array", "items": {"type": "string"}},
+                    "rows": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["after_section", "columns", "rows"],
                 "additionalProperties": False,
             },
         },
@@ -109,7 +119,7 @@ LESSON_SCHEMA = {
             },
         },
     },
-    "required": ["title", "bottom_line", "sections", "key_trials", "take_home",
+    "required": ["title", "bottom_line", "sections", "tables", "key_trials", "take_home",
                  "further_reading"],
     "additionalProperties": False,
 }
@@ -192,7 +202,9 @@ The request gives you the topic, why it was chosen, the questions the lesson sho
 answer, and a set of PubMed records (title, journal, year, abstract) retrieved for it. \
 Today is {today}.
 
-Write a lesson of roughly 1,500 to 2,000 words in total across all fields. Fill in:
+Write a lesson of roughly 1,500 to 2,000 words in total across all fields. The lesson is \
+complete only when every field below is filled: all of the sections, then the key \
+trials, the take-home points and the further reading. Fill in:
 
 - title: the lesson's title, 12 words at most. No "Weekly Lesson:" prefix.
 - bottom_line: three sentences at most, 70 words at most. If he reads nothing else, what \
@@ -207,10 +219,12 @@ attention as the positive ones; what is actually available or in use now; the ca
 controversies and common misreadings; and what is coming next. Each section has one to \
 four paragraphs of prose. Define every term of art the first time it appears. Use an \
 analogy when it truly clarifies a mechanism, not for decoration.
-- table_columns and table_rows: a section may carry one table when the content is \
-naturally a comparison, such as the agents in a class with their target, route, \
-indication and status. Use at most two tables in the lesson and at most five columns; \
-keep cells short. Leave both arrays empty for a section with no table.
+- tables: zero, one or two tables, for content that is naturally a comparison, such as \
+the agents in a class with their target, route, indication and status. For each give \
+after_section (the exact heading of the section it belongs under), columns (at most \
+five column headings) and rows, where each row is one string with its cells separated \
+by " | " in column order. Keep cells short. An empty list is fine when nothing calls \
+for a table.
 - key_trials: the three to six studies from the supplied records that he most needs to \
 know, in the order that tells the story. For each give pmid; name (the trial's acronym \
 or a short label); design (one sentence, 40 words at most: population, comparison, \
@@ -230,7 +244,8 @@ your own knowledge to teach, but he will act on what you write, so:
 - When a statement rests on one of the supplied records, cite it by putting its PMID in \
 square brackets right after the statement, in exactly this form: [PMID 12345678], or \
 [PMID 12345678; PMID 23456789] for two. Cite only PMIDs from the supplied records. \
-Citations belong in the sections; do not put them in the title, bottom_line or key_trials.
+Citations belong in the section paragraphs and table cells; do not put them in the title, \
+bottom_line or key_trials.
 - Where a supplied record is more recent than, or conflicts with, what you remember, \
 trust the record and say what changed.
 - Name a trial, a drug or a guideline recommendation from memory only when you are \
@@ -413,8 +428,16 @@ class References:
         return out
 
 
-def cell(text):
-    return text.replace("|", "/")
+def render_table(table, refs):
+    cols = [refs.plain(c) for c in table["columns"] if tidy(c)]
+    rows = [[c.strip() for c in tidy(r).split(" | ")] for r in table["rows"] if tidy(r)]
+    if not cols or not rows:
+        return []
+    out = ["| " + " | ".join(c.replace("|", "/") for c in cols) + " |", "|" + "---|" * len(cols)]
+    for r in rows:
+        r = (r + [""] * len(cols))[:len(cols)]
+        out.append("| " + " | ".join(refs.cite(c).replace("|", "/") for c in r) + " |")
+    return out + [""]
 
 
 def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
@@ -428,20 +451,21 @@ def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
             f"[{a['title'].rstrip('.')}]({a['url']}) (*{a['journal']}*)" for a in triggers), ""]
     out += ["## The bottom line", "", refs.plain(lesson["bottom_line"]), ""]
 
+    # A table goes under the section it names; one that names no section goes under the last.
+    headings = [s["heading"] for s in lesson["sections"]]
+    tables = lesson.get("tables", [])[:2]
+    for t in tables:
+        match = [h for h in headings if tidy(h).lower() == tidy(t["after_section"]).lower()]
+        t["home"] = match[0] if match else (headings[-1] if headings else None)
+
     for s in lesson["sections"]:
         out += [f"## {refs.plain(s['heading'])}", ""]
         for p in s["paragraphs"]:
             if tidy(p):
                 out += [refs.cite(p), ""]
-        cols = [tidy(c) for c in s["table_columns"] if tidy(c)]
-        rows = [r for r in s["table_rows"] if any(tidy(c) for c in r)]
-        if cols and rows:
-            out += ["| " + " | ".join(cell(refs.plain(c)) for c in cols) + " |",
-                    "|" + "---|" * len(cols)]
-            for r in rows:
-                r = (list(r) + [""] * len(cols))[:len(cols)]
-                out.append("| " + " | ".join(cell(refs.cite(c)) for c in r) + " |")
-            out.append("")
+        for t in tables:
+            if t["home"] == s["heading"]:
+                out += render_table(t, refs)
 
     trials = []
     for t in lesson["key_trials"]:
@@ -558,15 +582,30 @@ def educate():
     triggers = [known[p] for p in plan["trigger_pmids"] if p in have]
 
     print("=== Writing the lesson ===")
-    lesson = json.loads(curator.ask(
-        LESSON_SYSTEM.format(reader_profile=profile, guidance=guidance,
-                             today=f"{today:%B %-d, %Y}"),
-        lesson_request(plan, sources, triggers), LESSON_SCHEMA))
+    REPORTS_DIR.mkdir(exist_ok=True)
+    system = LESSON_SYSTEM.format(reader_profile=profile, guidance=guidance,
+                                  today=f"{today:%B %-d, %Y}")
+    request = lesson_request(plan, sources, triggers)
+    for attempt in (1, 2):
+        lesson = json.loads(curator.ask(system, request, LESSON_SCHEMA))
+        (REPORTS_DIR / f"lesson_{day}.json").write_text(
+            json.dumps({"plan": plan, "lesson": lesson}, indent=1, ensure_ascii=False),
+            encoding="utf-8")
+        length = sum(len(p.split()) for s in lesson["sections"] for p in s["paragraphs"])
+        print(f"  attempt {attempt}: {len(lesson['sections'])} sections, {length} words, "
+              f"{len(lesson['key_trials'])} key trials, {len(lesson['take_home'])} take-home points")
+        if len(lesson["sections"]) >= 3 and length >= 600 and lesson["take_home"]:
+            break
+        print("  The lesson came back incomplete.")
+        request += ("\n\nA first attempt at this lesson stopped after its opening section. "
+                    "Write the complete lesson: every section, the key trials, the take-home "
+                    "points and the further reading.")
+    else:
+        sys.exit("ERROR: the lesson came back incomplete twice; nothing was written.")
 
     model_label = ", ".join(sorted(curator.models_used)) or curator.model
     text = render_lesson(lesson, plan, sources, triggers, notes, model_label, day)
 
-    REPORTS_DIR.mkdir(exist_ok=True)
     path = REPORTS_DIR / f"lesson_{day}.md"
     path.write_text(text, encoding="utf-8")
 
