@@ -37,6 +37,17 @@ REPORTS_DIR = BASE_DIR / "reports"
 # the report itself is printed in the order sections appear in config.yaml.
 CURATE_ORDER = ["cardiology", "ai_medicine", "ai_meded", "longevity", "general_medicine"]
 
+# Server-side web search. PubMed holds nothing that was presented at a meeting last week,
+# announced in a press release or decided by a regulator, and the model's own knowledge
+# ends months before any run. Both the review and the lesson use this.
+WEB_SEARCH_TOOL = {"type": "web_search_20260209", "name": "web_search", "max_uses": 8}
+
+# Claude API list prices, US dollars per million tokens, and per web search.
+# Only used for the cost line in the report; update if prices change.
+PRICES = {"claude-opus-5-5": (4.0, 20.0), "claude-opus-5": (5.0, 25.0),
+          "claude-fable-5-2": (8.0, 40.0), "claude-sonnet-5-5": (2.0, 10.0)}
+SEARCH_PRICE = 10.0 / 1000
+
 ABSTRACT_CHARS = 3500
 
 SECTION_SCHEMA = {
@@ -179,6 +190,61 @@ not in it. Plain prose in one paragraph, no heading, no markdown.
 </review>"""
 
 
+SIGNALS_SYSTEM = """You are briefing the editor of a weekly literature review for one \
+physician, a heart failure and advanced transplant cardiologist who follows all of \
+cardiology and all of medicine. Today is {today}.
+
+The review itself is built from PubMed, so it sees only what has been published and \
+indexed. Your job is the part PubMed cannot see: what was presented, announced or decided \
+in the last {days} days and matters clinically. Use web search for the major cardiology \
+and medicine meetings in session or just finished (AHA Scientific Sessions, ACC, ESC, \
+TCT, HFSA, HRS, ISHLT, ADA, ASN, ASCO, IDWeek and the like), late-breaking trial results, \
+company topline announcements, FDA and EMA decisions and label changes, new guidelines, \
+and trials halted early for benefit, futility or harm. Search the current month and year \
+explicitly.
+
+Report at most {max_items} items, most important first, and fewer when the week is quiet: \
+an ordinary week with no meeting may have one or two, or none. Include an item only if a \
+practising physician would want to know this week. Leave out anything whose only source \
+is a peer-reviewed paper, since the review covers those itself, unless the paper is a \
+guideline or a major trial publication tied to a presentation.
+
+For each item write one line of this exact shape, and nothing else:
+- **<short label>** — what happened, with the headline numbers if they were released, in \
+at most 30 words. [<source name>, <Month Day>](<url>) (<presented | press release | \
+regulatory | guideline>)
+
+Use only numbers and claims your sources state, and link each item to a source you \
+actually retrieved. If there is nothing worth his attention, reply with exactly: NOTHING \
+THIS WEEK. Do not teach, summarise the field, or give advice."""
+
+
+def meeting_signals(curator, config, days, notes):
+    """One web-search call for what was presented or announced but is not yet in PubMed."""
+    watch = config.get("meeting_watch") or {}
+    if not watch.get("enabled", True):
+        return "", set()
+    try:
+        text = curator.ask(
+            SIGNALS_SYSTEM.format(today=f"{datetime.now():%B %-d, %Y}", days=days,
+                                  max_items=watch.get("max_items", 6)),
+            "What was presented, announced or decided in the last "
+            f"{days} days that he should know about?",
+            tools=[WEB_SEARCH_TOOL])
+    except Exception as e:
+        print(f"  FAILED: {e}")
+        notes.append("The web search for conference and regulatory news failed this week "
+                     f"({type(e).__name__}), so this report covers PubMed only.")
+        return "", set()
+    if "NOTHING THIS WEEK" in text.upper():
+        print("  nothing this week")
+        return "", set()
+    urls = set(re.findall(r"https?://[^\s)\]<>\"']+", text))
+    lines = [l.rstrip() for l in text.splitlines() if l.strip().startswith(("-", "*"))]
+    print(f"  {len(lines)} items, {len(urls)} sources")
+    return "\n".join(lines), urls
+
+
 def load_config():
     with open(BASE_DIR / "config.yaml") as f:
         return yaml.safe_load(f)
@@ -189,8 +255,20 @@ class Curator:
         self.client = anthropic.Anthropic()
         self.model = config.get("model", "claude-opus-5-5")
         self.effort = config.get("effort", "high")
-        self.usage = {"input": 0, "output": 0}
+        self.usage = {"input": 0, "output": 0, "searches": 0}
         self.models_used = set()
+
+    def cost(self):
+        """Rough US dollar cost of this run at list prices."""
+        rate_in, rate_out = PRICES.get(self.model, PRICES["claude-opus-5-5"])
+        return (self.usage["input"] / 1e6 * rate_in
+                + self.usage["output"] / 1e6 * rate_out
+                + self.usage["searches"] * SEARCH_PRICE)
+
+    def spent(self):
+        return (f"{self.usage['input']:,} input + {self.usage['output']:,} output tokens"
+                + (f" and {self.usage['searches']} web searches" if self.usage["searches"] else "")
+                + f", about ${self.cost():.2f}")
 
     def ask(self, system, user, schema=None, tools=None, max_rounds=6):
         """One streamed request. Returns the text of the reply (JSON text if schema given).
@@ -230,6 +308,10 @@ class Curator:
                 raise RuntimeError("the request was declined by the model")
             if message.stop_reason == "max_tokens":
                 raise RuntimeError("the reply was cut off (max_tokens)")
+            self.usage["searches"] += sum(
+                1 for b in message.content
+                if getattr(b, "type", "") == "server_tool_use"
+                and getattr(b, "name", "") == "web_search")
             texts += [b.text for b in message.content if b.type == "text"]
             if message.stop_reason != "pause_turn":
                 break
@@ -281,6 +363,25 @@ def unsupported_numbers(finding, abstract):
     """Numbers in the finding that do not appear in the abstract."""
     have = set(NUMBER_RE.findall(_normalise(abstract)))
     return [n for n in NUMBER_RE.findall(_normalise(finding)) if n not in have]
+
+
+LINK_RE = re.compile(r"\[([^\[\]]*)\]\((https?://[^)\s]+)\)")
+
+
+def check_links(text, allowed, notes):
+    """Remove any web link the search did not return, keeping the words it wrapped."""
+    seen = set()
+
+    def swap(match):
+        label, url = match.group(1), match.group(2)
+        if url in allowed or "pubmed.ncbi.nlm.nih.gov" in url or "doi.org" in url:
+            return match.group(0)
+        if url not in seen:
+            seen.add(url)
+            notes.append(f"Removed a link to {url}, which the web search did not return.")
+        return label
+
+    return LINK_RE.sub(swap, text)
 
 
 def clean_title(title):
@@ -398,8 +499,21 @@ def curate():
             print(f"  + [{s['depth']}] {a['journal']}: {a['title'][:90]}")
         results[key] = (result, by_pmid)
 
+    print("\n=== Presented or announced this week (web search) ===")
+    signals, signal_urls = meeting_signals(curator, config, data.get("days", 7), notes)
+    if signals:
+        signals = check_links(signals, signal_urls, notes)
+
     body = "\n".join(render_section(sections[k]["title"], *results[k])
                      for k in sections if k in results)
+    if signals:
+        body += "\n".join([
+            "## Presented or Announced This Week", "",
+            "Not from PubMed: results presented at meetings, company announcements and "
+            "regulatory decisions found by a web search, several of which will not be "
+            "published for months. Each is labelled with its kind of source. Numbers here "
+            "are as reported and are **not** verified against a paper.", "",
+            signals, "", ""])
 
     n_studies = sum(len(r["studies"]) for r, _ in results.values())
     n_full = sum(s["depth"] == "full" for r, _ in results.values() for s in r["studies"])
@@ -417,7 +531,10 @@ def curate():
     verification = [
         f"{total} candidate papers screened from PubMed; {n_studies} selected "
         f"({n_full} with a full write-up).",
-        "Every selected PMID, title, author list and journal is taken directly from PubMed. "
+        ("Items under Presented or Announced This Week come from a web search, not PubMed, "
+         "and are not peer-reviewed; treat their numbers as provisional. "
+         if signals else "")
+        + "Every selected PMID, title, author list and journal is taken directly from PubMed. "
         "Design and Results lines are drawn from the abstract and their numbers checked against it "
         "automatically. Context lines reflect the model's knowledge of the prior literature "
         "and are not machine-verified.",
@@ -437,7 +554,7 @@ def curate():
         *[f"- {n}" for n in verification],
         "",
         f"*Selected and written by {', '.join(sorted(curator.models_used)) or curator.model} "
-        f"from PubMed records added {data['window']}.*",
+        f"from PubMed records added {data['window']}. This run used {curator.spent()}.*",
         "",
     ])
 
@@ -462,7 +579,7 @@ def curate():
     (REPORTS_DIR / f"selection_{day}.json").write_text(
         json.dumps(selection, indent=1, ensure_ascii=False), encoding="utf-8")
     print(f"\nwrote {path.relative_to(BASE_DIR)}")
-    print(f"API usage: {curator.usage['input']:,} input + {curator.usage['output']:,} output tokens")
+    print(f"API usage: {curator.spent()}")
     for n in notes:
         print(f"NOTE: {n}")
 

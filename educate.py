@@ -35,7 +35,8 @@ from datetime import datetime
 from pathlib import Path
 
 from collect import EXCLUDE_TYPES, PUBMED_BASE, get, pubmed_fetch
-from curate import ABSTRACT_CHARS, Curator, clean_title, load_config, unsupported_numbers
+from curate import (ABSTRACT_CHARS, WEB_SEARCH_TOOL, Curator, clean_title, load_config,
+                    unsupported_numbers)
 
 BASE_DIR = Path(__file__).parent
 CANDIDATES_PATH = BASE_DIR / "data" / "candidates.json"
@@ -48,8 +49,6 @@ RECENT_PER_TERM = 6
 # The model's own knowledge ends months before any given run, and a trial presented at a
 # meeting last week exists only in slides, a press release and the news until PubMed
 # catches up. So each lesson begins with a web search for the topic's current state.
-WEB_SEARCH_TOOL = {"type": "web_search_20260209", "name": "web_search", "max_uses": 8}
-
 NEWS_SYSTEM = """You are checking the current state of one medical topic for a lesson \
 being written today, {today}.
 
@@ -642,7 +641,8 @@ def render_table(table, refs):
     return out + [""]
 
 
-def render_lesson(lesson, plan, sources, triggers, notes, model_label, day, allowed_urls=()):
+def render_lesson(lesson, plan, sources, triggers, notes, model_label, day, allowed_urls=(),
+                  curator_spent="an unrecorded number of tokens"):
     refs = References(sources, notes, allowed_urls)
     by_pmid = refs.sources
 
@@ -730,6 +730,7 @@ def render_lesson(lesson, plan, sources, triggers, notes, model_label, day, allo
             + (f", and a web search run on the day found {len(allowed_urls)} further "
                f"source{'s' if len(allowed_urls) != 1 else ''} for the current state of "
                "the field" if allowed_urls else "") + ".",
+            f"- Writing this lesson used {curator_spent}.",
             "- Every reference, key trial and further-reading entry is a PubMed record that the "
             "searches returned; titles, authors, journals and years come from PubMed. Numbers in "
             "The Key Trials are checked automatically against each abstract.",
@@ -833,7 +834,7 @@ def educate():
 
     model_label = ", ".join(sorted(curator.models_used)) or curator.model
     text = render_lesson(lesson, plan, sources, triggers, notes, model_label, day,
-                         allowed_urls)
+                         allowed_urls, curator.spent())
 
     path = REPORTS_DIR / f"lesson_{day}.md"
     path.write_text(text, encoding="utf-8")
@@ -847,7 +848,7 @@ def educate():
                             encoding="utf-8")
 
     print(f"\nwrote {path.relative_to(BASE_DIR)}")
-    print(f"API usage: {curator.usage['input']:,} input + {curator.usage['output']:,} output tokens")
+    print(f"API usage: {curator.spent()}")
     for n in notes:
         print(f"NOTE: {n}")
     return path

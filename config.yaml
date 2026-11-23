@@ -37,6 +37,13 @@ max_also_notable: 3
 slides:
   sections: [ai_medicine, ai_meded]
 
+# What was presented at a meeting, announced or decided by a regulator in the last
+# `lookback_days` — the part PubMed cannot see. One web search per run; the items go in
+# their own clearly-labelled section and are never written up as studies.
+meeting_watch:
+  enabled: true
+  max_items: 6
+
 # ---------------------------------------------------------------------------
 # The weekly lesson: a second email, sent with the review, that teaches one topic.
 # ---------------------------------------------------------------------------
