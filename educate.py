@@ -594,12 +594,14 @@ def educate():
         length = sum(len(p.split()) for s in lesson["sections"] for p in s["paragraphs"])
         print(f"  attempt {attempt}: {len(lesson['sections'])} sections, {length} words, "
               f"{len(lesson['key_trials'])} key trials, {len(lesson['take_home'])} take-home points")
-        if len(lesson["sections"]) >= 3 and length >= 600 and lesson["take_home"]:
+        if (len(lesson["sections"]) >= 3 and length >= 600 and lesson["take_home"]
+                and lesson["key_trials"] and lesson["further_reading"]):
             break
         print("  The lesson came back incomplete.")
         request += ("\n\nA first attempt at this lesson stopped after its opening section. "
                     "Write the complete lesson: every section, the key trials, the take-home "
-                    "points and the further reading.")
+                    "points and the further reading, which must list two to four of the "
+                    "supplied records.")
     else:
         sys.exit("ERROR: the lesson came back incomplete twice; nothing was written.")
 
