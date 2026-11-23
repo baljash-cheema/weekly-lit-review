@@ -125,19 +125,30 @@ LESSON_SCHEMA = {
     "additionalProperties": False,
 }
 
-CARDIOLOGY_BLOCK = """**This week is a cardiology lesson.** Choose a topic from anywhere \
-in cardiology: prevention, lipids, coronary disease, structural, electrophysiology, \
-imaging, heart failure, cardiomyopathy, pulmonary vascular disease, critical care \
-cardiology. It may sit at the border with another specialty, such as cardio-oncology or \
-cardiometabolic disease, as long as the lesson is taught for a cardiologist."""
+CARDIOLOGY_BLOCK = """**This week is a cardiology lesson**: a topic a cardiologist meets, \
+taught for a cardiologist. But it must still carry lessons that travel beyond \
+cardiology. Choose a therapy, mechanism or body of evidence whose principles he could \
+apply to a patient who is not his, or explain to a colleague in another specialty: a drug \
+class that acts on biology shared across organ systems, a systemic disease with cardiac \
+manifestations, a platform technology arriving in several fields at once, a question about \
+evidence or trial interpretation that recurs throughout medicine.
+
+What to avoid, because its lessons stop at the cath lab door: procedural and \
+interventional technique, device and hardware selection, surgical or catheter \
+craft, imaging acquisition protocols, and the fine detail of any subspecialty workflow. \
+A lesson on which balloon or burr prepares a calcified lesion is exactly the wrong \
+choice, however good the week's trial; a lesson on why an imaging surrogate keeps \
+failing to predict clinical benefit is the right one. The test: would a thoughtful \
+internist, oncologist or nephrologist get something out of this lesson too? If not, \
+choose a different topic."""
 
 GENERAL_BLOCK = """**This week is a general medicine lesson**, which comes round once \
 every {cycle} weeks, so make it count. Choose a therapy, drug class or therapeutic \
 technology with broad application across medicine: the kind of thing that turns up in \
 several specialties at once and that he will meet in his own patients whoever started \
 it. Think of agents and platforms that cross specialty lines. Do not choose a cardiology \
-topic this week, and do not choose something confined to a single other specialty; the \
-test is whether a therapy travels across medicine."""
+topic this week, and do not choose something confined to a single other specialty or to \
+its procedures; the test is whether a therapy travels across medicine."""
 
 TOPIC_SYSTEM = """You plan the continuing education of one physician. Each week, \
 alongside his literature review, he receives a single lesson on a topic he should \
@@ -162,13 +173,21 @@ areas are; those sections of his review exist to keep him current, not to set th
 Do not choose a purely methodological topic, such as a statistical or trial-design \
 technique, unless it is inseparable from a therapy he needs to understand.
 
+Above all, the lesson must be worth his time: a subject whose understanding makes him a \
+better physician generally, not only a better specialist. He has said plainly that he \
+does not want heavily interventional or narrowly subspecialty topics, and that he wants \
+lessons applicable across medicine. Prefer mechanism, pharmacology, therapeutic \
+platforms, systemic disease and the interpretation of evidence over technique and \
+equipment.
+
 How to choose, within that area. Read this week's review and the other papers published \
 this week, and ask \
 what a sharp clinician in his position would need to already understand to read those \
 papers well, and probably does not: a drug class or delivery technology that arrived \
 after his training, a body of trials whose story he has only seen in pieces, a mechanism \
 that several new therapies share. The best topic is one where a week's paper is the \
-visible tip of something larger. Look at the list of past lessons, which gives each \
+visible tip of something larger, and where the something larger reaches past the paper's \
+own field. Look at the list of past lessons, which gives each \
 lesson's area, and move around within this week's area rather than staying in one corner \
 of it.
 

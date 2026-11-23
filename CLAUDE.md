@@ -79,6 +79,15 @@ therapeutics, gene therapy.
 - Topics come only from **cardiology** or **general medicine**, and in general medicine
   only therapies or therapeutic technologies with broad application across the field.
   Explicitly not AI, medical education or longevity — he gets those in the review.
+- **Not interventional, not narrowly subspecialty (2026-11-23).** He rejected a lesson
+  on calcified-lesion preparation as "a boring one": "I don't think I would want anything
+  that is heavily interventional or very hardcore cardiology specific. I would want
+  things that have lessons applicable across medicine." This applies to the cardiology
+  weeks too, so the real test is not which field the topic sits in but whether its
+  lessons travel: therapies, mechanisms, platform technologies, systemic disease and the
+  interpretation of evidence, not technique, devices or imaging protocols. The prompt
+  states the test as: would a thoughtful internist, oncologist or nephrologist get
+  something out of this lesson too?
 - **Rotation, his request 2026-11-23: three cardiology lessons, then one general
   medicine.** `educate.py` decides the area before the model is asked (`area_due()`,
   from the areas recorded in `education/history.json`, so a skipped or failed week does
