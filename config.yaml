@@ -64,8 +64,10 @@ education:
     - Inflammation in cardiovascular disease, from mechanism to the anti-inflammatory trials
     - RNA-targeted therapeutics, antisense oligonucleotides and siRNA
     - Gene therapy and gene editing in medicine and cardiology
-  # Roughly how long a lesson should be, in words. Lower it for a shorter read.
-  target_words: 1100
+  # Roughly how long the teaching itself should be, in words (the bottom line plus the
+  # sections). The key trials, take-home points and further reading add about half as
+  # much again. Lower this one number for a shorter lesson.
+  target_words: 950
   max_searches: 7    # background PubMed searches per lesson
   per_search: 8      # top results kept from each search
   max_sources: 35    # most PubMed records handed to Claude for one lesson

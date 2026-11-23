@@ -217,8 +217,11 @@ nomenclature, signaling-cascade steps and model-fitting detail unless a clinicia
 misread a trial without them. Prefer the arc of the evidence and what it means for \
 practice over completeness. One well-chosen example beats three.
 
-Length is a hard constraint: about {target_words} words in total across all fields, and \
-never more than {max_words}. A tight lesson he finishes is worth more than a thorough one \
+Length is a hard constraint, and the budget is spent in parts. The bottom line and the \
+sections together are the lesson proper: about {target_words} words, never more than \
+{max_words}. The key trials, take-home points and further reading are additional and \
+tightly capped below; they are not room for overflow, and the whole page should come to \
+about {page_words} words. A tight lesson he finishes is worth more than a thorough one \
 he abandons. The lesson is complete only when every field below is filled: all of the \
 sections, then the key trials, the take-home points and the further reading. Fill in:
 
@@ -243,19 +246,23 @@ after_section (the exact heading of the section it belongs under), columns (at m
 five column headings) and rows, where each row is one string with its cells separated \
 by " | " in column order. Keep cells short, and keep the table to six rows at most; \
 anything longer belongs in prose. An empty list is fine when nothing calls for a table.
-- key_trials: the three or four studies from the supplied records that he most needs to \
-know, in the order that tells the story. For each give pmid; name (the trial's acronym \
-or a short label); design (one sentence, 40 words at most: population, comparison, \
-primary endpoint); results (one or two sentences, 60 words at most, with the primary \
-result and its numbers); takeaway (one sentence, 30 words at most, on what it \
+- key_trials: the three studies from the supplied records that he most needs to know, in \
+the order that tells the story; a fourth only if it genuinely changes the story. This \
+block is a quick-reference card, not a second lesson, so keep it lean: the full citation \
+is added automatically, so do not repeat the title in name. For each give pmid; name (the \
+trial's acronym or a short label); design (one sentence, 30 words at most: population, \
+comparison, primary endpoint); results (one or two sentences, 45 words at most, with the \
+primary result and its numbers); takeaway (one sentence, 25 words at most, on what it \
 established). Design and results must use only what that record's abstract states, and \
 every number in them must appear in the abstract exactly as written there; they are \
 checked automatically, so do not round, convert or compute. If a trial that belongs in \
 the story is not among the supplied records, discuss it in the sections instead.
-- take_home: three or four single-sentence points to carry into practice or into \
-reading the next paper.
+- take_home: three or four single-sentence points, 25 words each at most, to carry into \
+practice or into reading the next paper. They must add something, not restate the \
+take-aways above.
 - further_reading: two or three of the supplied records worth reading in full, review \
-articles or guidelines where possible, each with a clause in why saying what it offers.
+articles or guidelines where possible, each with a clause in why, 20 words at most, \
+saying what it offers.
 
 Sources and honesty. The supplied records are abstracts only. You may and should draw on \
 your own knowledge to teach, but he will act on what you write, so:
@@ -607,6 +614,7 @@ def educate():
     system = LESSON_SYSTEM.format(reader_profile=profile, guidance=guidance,
                                   target_words=target_words,
                                   max_words=round(target_words * 1.35 / 50) * 50,
+                                  page_words=round(target_words * 1.6 / 50) * 50,
                                   today=f"{today:%B %-d, %Y}")
     request = lesson_request(plan, sources, triggers)
     for attempt in (1, 2):
@@ -615,8 +623,10 @@ def educate():
             json.dumps({"plan": plan, "lesson": lesson}, indent=1, ensure_ascii=False),
             encoding="utf-8")
         length = sum(len(p.split()) for s in lesson["sections"] for p in s["paragraphs"])
-        print(f"  attempt {attempt}: {len(lesson['sections'])} sections, {length} words, "
-              f"{len(lesson['key_trials'])} key trials, {len(lesson['take_home'])} take-home points")
+        extra = sum(len(str(v).split()) for t in lesson["key_trials"] for v in t.values())
+        print(f"  attempt {attempt}: {len(lesson['sections'])} sections, {length} words of "
+              f"teaching, {len(lesson['key_trials'])} key trials ({extra} words), "
+              f"{len(lesson['take_home'])} take-home points")
         if (len(lesson["sections"]) >= 3 and length >= target_words * 0.45
                 and lesson["take_home"] and lesson["key_trials"]
                 and lesson["further_reading"]):
