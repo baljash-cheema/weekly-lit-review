@@ -75,11 +75,22 @@ trials show, what is available, caveats. His examples: inflammation in cardiovas
 disease (after a negative trial at grand rounds), antisense oligonucleotides and RNA
 therapeutics, gene therapy.
 
+**Scope and length (he narrowed both on 2026-11-23, after reading the first lesson):**
+- Topics come only from **cardiology** or **general medicine**, and in general medicine
+  only therapies or therapeutic technologies with broad application across the field.
+  Explicitly not AI, medical education or longevity — he gets those in the review.
+- **High level.** Teach the shape of the subject and what it means for practice, not the
+  molecular detail. The first lesson explained bisulfite conversion and elastic-net
+  regression; that is the wrong altitude.
+- About **1,100 words**, 1,500 at the most (it was 1,500-2,000). Set by
+  `education.target_words` in `config.yaml`, which also drives the hard ceiling and the
+  completeness check, so lowering that one number shortens the lesson.
+
 How it works, three steps after `curate.py`:
 1. Claude reads the finished review, titles of the unselected candidates, past topics
    (`education/history.json`) and `education.requested_topics`, and returns a topic,
-   the questions to answer, and up to 8 PubMed searches.
-2. The searches run against all of PubMed (no date limit, best match, top 10 each).
+   the questions to answer, and up to 7 PubMed searches.
+2. The searches run against all of PubMed (no date limit, best match, top 8 each).
 3. Claude writes the lesson from those abstracts as structured JSON; `render_lesson`
    turns it into markdown with numbered references.
 

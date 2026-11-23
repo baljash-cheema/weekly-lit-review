@@ -41,12 +41,17 @@ slides:
 # The weekly lesson: a second email, sent with the review, that teaches one topic.
 # ---------------------------------------------------------------------------
 education:
-  # What the lessons are for. Plain English; edit freely.
+  # What the lessons are for, including the scope and level. Plain English; edit freely.
   guidance: >
-    Continuing education. Each week, look across what is happening in general medicine,
-    cardiology, AI in medicine, AI in medical education and longevity, work out where
-    the gaps in my knowledge are likely to be, pick one topic I need to understand
-    better to stay current, and teach it to me. For example, a negative trial of an
+    Continuing education. Each week, work out where the gaps in my knowledge are likely
+    to be, pick one topic I need to understand better to stay current, and teach it to
+    me. Keep it to cardiology, or to general medicine — and in general medicine I mean
+    therapies and therapeutic technologies with broad application across the field, the
+    sort I will run into in my own patients whichever specialty started them. Not AI,
+    not medical education, not longevity; I read about those in the review itself.
+    Keep it high level: I am a senior cardiologist, so teach me the shape of the subject
+    and what it means for practice, not the molecular detail. For example, a negative
+    trial of an
     anti-inflammatory drug in cardiovascular disease should prompt a lesson on
     inflammation in cardiology: what inflammation is, how it matters to cardiovascular
     disease, what the trials have shown, the caveats, and the wider literature. A trial
@@ -59,9 +64,11 @@ education:
     - Inflammation in cardiovascular disease, from mechanism to the anti-inflammatory trials
     - RNA-targeted therapeutics, antisense oligonucleotides and siRNA
     - Gene therapy and gene editing in medicine and cardiology
-  max_searches: 8    # background PubMed searches per lesson
-  per_search: 10     # top results kept from each search
-  max_sources: 50    # most PubMed records handed to Claude for one lesson
+  # Roughly how long a lesson should be, in words. Lower it for a shorter read.
+  target_words: 1100
+  max_searches: 7    # background PubMed searches per lesson
+  per_search: 8      # top results kept from each search
+  max_sources: 35    # most PubMed records handed to Claude for one lesson
 
 # Hard cap on full write-ups per section in the final report (fewer is fine).
 max_per_section: 5

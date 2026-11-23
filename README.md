@@ -50,6 +50,11 @@ trials unfolded (negative ones included), what is available now, the caveats, an
 is coming. A trial of an antisense oligonucleotide, for example, prompts a lesson on
 RNA-targeted therapy as a whole.
 
+It is deliberately about 1,100 words and pitched at overview level: the shape of a
+subject and what it means for practice, not a molecular review. Mine draws topics only
+from cardiology and from broadly applicable therapies in general medicine; both the
+scope and the length are settings.
+
 To ground the lesson, Claude writes a set of PubMed searches for the topic's landmark
 trials, reviews and guidelines; the program runs them and hands the abstracts back.
 Every reference in the lesson is one of those records, the numbers in its Key Trials
@@ -163,7 +168,8 @@ Open `config.yaml` and edit:
   queries use the same syntax as the PubMed website's search box.
 - `journal_tiers`: which journals rank highest.
 - `max_per_section`, `lookback_days`, `model`.
-- `education`: what the weekly lesson is for, and any topics you want taught.
+- `education`: what the weekly lesson is for, its `target_words`, and any
+  `requested_topics` you want taught.
 
 The schedule is in `.github/workflows/weekly-review.yml`. It is set to start just after
 midnight on Friday, US Central time, so the emails are waiting in the morning. GitHub

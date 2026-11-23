@@ -138,23 +138,31 @@ lesson.
 {guidance}
 </what_he_asked_for>
 
+Scope. The topic must come from one of two places, and nowhere else:
+- cardiology, anywhere in the field; or
+- general medicine, and there specifically a therapy, drug class or therapeutic \
+technology with broad application across medicine, the kind of thing that turns up in \
+several specialties at once and that he will meet in his own patients whoever started it.
+Do not choose a topic in artificial intelligence, medical education, longevity or aging \
+biology, however interesting the week's papers in those areas are; those sections of his \
+review exist to keep him current, not to set the lesson. Do not choose a purely \
+methodological topic, such as a statistical or trial-design technique, unless it is \
+inseparable from a therapy he needs to understand.
+
 How to choose. Read this week's review and the other papers published this week, and ask \
 what a sharp clinician in his position would need to already understand to read those \
-papers well, and probably does not: a drug class or technology that arrived after his \
-training, a field next to his own that is moving fast, a body of trials whose story he \
-has only seen in pieces, a method (statistical, genetic, computational) that the papers \
-lean on. The best topic is one where a week's paper is the visible tip of something \
-larger that is worth an organized twenty minutes. Rotate across his interests over the \
-weeks (general medicine, cardiology, AI in medicine, AI in medical education, longevity) \
-rather than staying in one, and look at the list of past lessons to see where the \
-balance has been.
+papers well, and probably does not: a drug class or delivery technology that arrived \
+after his training, a body of trials whose story he has only seen in pieces, a mechanism \
+that several new therapies share. The best topic is one where a week's paper is the \
+visible tip of something larger. Look at the list of past lessons and move around the \
+two areas rather than staying in one corner of them.
 
-Scope it like a good grand rounds: narrow enough to teach properly in about 1,800 words, \
-broad enough to be a subject and not a single paper. "RNA-targeted therapeutics: \
-antisense oligonucleotides and siRNA" is the right size; "genetics" is too broad and \
-"the phase 3 trial of drug X" is too narrow. Do not choose something at the center of \
-his own daily practice, such as routine guideline-directed therapy for heart failure, \
-unless the ground under it has genuinely shifted.
+Scope it like a crisp grand rounds overview: narrow enough to teach properly in about \
+{target_words} words, broad enough to be a subject and not a single paper. \
+"RNA-targeted therapeutics: antisense oligonucleotides and siRNA" is the right size; \
+"genetics" is too broad and "the phase 3 trial of drug X" is too narrow. Do not choose \
+something at the center of his own daily practice, such as routine guideline-directed \
+therapy for heart failure, unless the ground under it has genuinely shifted.
 
 Never repeat a past lesson. A neighboring topic is fine when it is clearly a different \
 lesson. If he has asked for specific topics and one is still untaught, prefer it when it \
@@ -167,11 +175,11 @@ Fields:
 which of this week's papers raised the topic and what gap the lesson fills.
 - trigger_pmids: the PMIDs of the papers from this week that prompted the topic, at most \
 three, taken only from the PMIDs shown to you. Empty if the topic came from his list.
-- questions: five to eight questions the lesson should answer, in teaching order, \
+- questions: four to six questions the lesson should answer, in teaching order, \
 starting from the fundamentals (what is it, how does it work), through why it matters \
 for patients, what the trials show, what is available now, to the caveats and what is \
-coming.
-- searches: {max_searches} PubMed searches, or fewer, that together retrieve the sources \
+coming. Keep them the questions a busy clinician would actually ask, not a syllabus.
+- searches: up to {max_searches} PubMed searches, or fewer, that together retrieve the sources \
 a careful teacher would want: the landmark trials (search them by trial name or drug \
 name), authoritative recent reviews, guidelines and scientific statements, the \
 foundational mechanism papers, and the newest developments. Each search returns only its \
@@ -202,30 +210,40 @@ The request gives you the topic, why it was chosen, the questions the lesson sho
 answer, and a set of PubMed records (title, journal, year, abstract) retrieved for it. \
 Today is {today}.
 
-Write a lesson of roughly 1,500 to 2,000 words in total across all fields. The lesson is \
-complete only when every field below is filled: all of the sections, then the key \
-trials, the take-home points and the further reading. Fill in:
+Pitch it high. He is a senior academic physician: teach him the shape of the subject, \
+not its molecular detail. Explain a mechanism in the few sentences that make the clinical \
+behavior of the drugs make sense, and stop there; skip assay chemistry, enzyme \
+nomenclature, signaling-cascade steps and model-fitting detail unless a clinician would \
+misread a trial without them. Prefer the arc of the evidence and what it means for \
+practice over completeness. One well-chosen example beats three.
+
+Length is a hard constraint: about {target_words} words in total across all fields, and \
+never more than {max_words}. A tight lesson he finishes is worth more than a thorough one \
+he abandons. The lesson is complete only when every field below is filled: all of the \
+sections, then the key trials, the take-home points and the further reading. Fill in:
 
 - title: the lesson's title, 12 words at most. No "Weekly Lesson:" prefix.
-- bottom_line: three sentences at most, 70 words at most. If he reads nothing else, what \
+- bottom_line: three sentences at most, 65 words at most. If he reads nothing else, what \
 should he now know?
-- sections: four to seven sections that carry the teaching, in an order that builds. \
+- sections: three to five sections that carry the teaching, in an order that builds. \
 Choose headings that fit the topic rather than a fixed template; phrasing a heading as \
 the question it answers often works. Between them the sections should cover: the \
 fundamentals, defined plainly (what the thing is and how it works, with the mechanism \
 explained rather than named); why it matters for patients, especially his; how the \
 evidence unfolded, told as a story with the negative and neutral trials given the same \
 attention as the positive ones; what is actually available or in use now; the caveats, \
-controversies and common misreadings; and what is coming next. Each section has one to \
-four paragraphs of prose. Define every term of art the first time it appears. Use an \
-analogy when it truly clarifies a mechanism, not for decoration.
-- tables: zero, one or two tables, for content that is naturally a comparison, such as \
+controversies and common misreadings; and what is coming next. Cover them in the space \
+you have rather than giving each its own section; two paragraphs is usually the right \
+size for a section and three is the most any section should have. Define every term of \
+art the first time it appears. Use an analogy when it truly clarifies a mechanism, not \
+for decoration.
+- tables: zero or one table, for content that is naturally a comparison, such as \
 the agents in a class with their target, route, indication and status. For each give \
 after_section (the exact heading of the section it belongs under), columns (at most \
 five column headings) and rows, where each row is one string with its cells separated \
-by " | " in column order. Keep cells short. An empty list is fine when nothing calls \
-for a table.
-- key_trials: the three to six studies from the supplied records that he most needs to \
+by " | " in column order. Keep cells short, and keep the table to six rows at most; \
+anything longer belongs in prose. An empty list is fine when nothing calls for a table.
+- key_trials: the three or four studies from the supplied records that he most needs to \
 know, in the order that tells the story. For each give pmid; name (the trial's acronym \
 or a short label); design (one sentence, 40 words at most: population, comparison, \
 primary endpoint); results (one or two sentences, 60 words at most, with the primary \
@@ -234,9 +252,9 @@ established). Design and results must use only what that record's abstract state
 every number in them must appear in the abstract exactly as written there; they are \
 checked automatically, so do not round, convert or compute. If a trial that belongs in \
 the story is not among the supplied records, discuss it in the sections instead.
-- take_home: three to five single-sentence points to carry into practice or into \
+- take_home: three or four single-sentence points to carry into practice or into \
 reading the next paper.
-- further_reading: two to four of the supplied records worth reading in full, review \
+- further_reading: two or three of the supplied records worth reading in full, review \
 articles or guidelines where possible, each with a clause in why saying what it offers.
 
 Sources and honesty. The supplied records are abstracts only. You may and should draw on \
@@ -453,7 +471,7 @@ def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
 
     # A table goes under the section it names; one that names no section goes under the last.
     headings = [s["heading"] for s in lesson["sections"]]
-    tables = lesson.get("tables", [])[:2]
+    tables = lesson.get("tables", [])[:1]
     for t in tables:
         match = [h for h in headings if tidy(h).lower() == tidy(t["after_section"]).lower()]
         t["home"] = match[0] if match else (headings[-1] if headings else None)
@@ -553,6 +571,7 @@ def educate():
     today = datetime.now()
     day = f"{today:%Y-%m-%d}"
     per_search = edu.get("per_search", 10)
+    target_words = edu.get("target_words", 1100)
     profile = " ".join(config.get("reader_profile", "").split())
     guidance = " ".join(edu.get("guidance", "").split())
     notes = []
@@ -563,6 +582,7 @@ def educate():
     plan = json.loads(curator.ask(
         TOPIC_SYSTEM.format(reader_profile=profile, guidance=guidance,
                             max_searches=edu.get("max_searches", 8), per_search=per_search,
+                            target_words=target_words,
                             today=f"{today:%B %-d, %Y}", recent_year=today.year - 1),
         topic_request(review_md, data, config["sections"], history,
                       edu.get("requested_topics") or []),
@@ -584,6 +604,8 @@ def educate():
     print("=== Writing the lesson ===")
     REPORTS_DIR.mkdir(exist_ok=True)
     system = LESSON_SYSTEM.format(reader_profile=profile, guidance=guidance,
+                                  target_words=target_words,
+                                  max_words=round(target_words * 1.35 / 50) * 50,
                                   today=f"{today:%B %-d, %Y}")
     request = lesson_request(plan, sources, triggers)
     for attempt in (1, 2):
@@ -594,8 +616,9 @@ def educate():
         length = sum(len(p.split()) for s in lesson["sections"] for p in s["paragraphs"])
         print(f"  attempt {attempt}: {len(lesson['sections'])} sections, {length} words, "
               f"{len(lesson['key_trials'])} key trials, {len(lesson['take_home'])} take-home points")
-        if (len(lesson["sections"]) >= 3 and length >= 600 and lesson["take_home"]
-                and lesson["key_trials"] and lesson["further_reading"]):
+        if (len(lesson["sections"]) >= 3 and length >= target_words * 0.45
+                and lesson["take_home"] and lesson["key_trials"]
+                and lesson["further_reading"]):
             break
         print("  The lesson came back incomplete.")
         request += ("\n\nA first attempt at this lesson stopped after its opening section. "
