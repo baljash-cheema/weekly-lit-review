@@ -125,6 +125,20 @@ LESSON_SCHEMA = {
     "additionalProperties": False,
 }
 
+CARDIOLOGY_BLOCK = """**This week is a cardiology lesson.** Choose a topic from anywhere \
+in cardiology: prevention, lipids, coronary disease, structural, electrophysiology, \
+imaging, heart failure, cardiomyopathy, pulmonary vascular disease, critical care \
+cardiology. It may sit at the border with another specialty, such as cardio-oncology or \
+cardiometabolic disease, as long as the lesson is taught for a cardiologist."""
+
+GENERAL_BLOCK = """**This week is a general medicine lesson**, which comes round once \
+every {cycle} weeks, so make it count. Choose a therapy, drug class or therapeutic \
+technology with broad application across medicine: the kind of thing that turns up in \
+several specialties at once and that he will meet in his own patients whoever started \
+it. Think of agents and platforms that cross specialty lines. Do not choose a cardiology \
+topic this week, and do not choose something confined to a single other specialty; the \
+test is whether a therapy travels across medicine."""
+
 TOPIC_SYSTEM = """You plan the continuing education of one physician. Each week, \
 alongside his literature review, he receives a single lesson on a topic he should \
 understand better. Your job in this request is to choose this week's topic and to write \
