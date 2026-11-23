@@ -79,6 +79,11 @@ therapeutics, gene therapy.
 - Topics come only from **cardiology** or **general medicine**, and in general medicine
   only therapies or therapeutic technologies with broad application across the field.
   Explicitly not AI, medical education or longevity — he gets those in the review.
+- **Rotation, his request 2026-11-23: three cardiology lessons, then one general
+  medicine.** `educate.py` decides the area before the model is asked (`area_due()`,
+  from the areas recorded in `education/history.json`, so a skipped or failed week does
+  not shift the pattern) and the topic prompt is given only that area. `education.cycle`
+  in `config.yaml` sets it: 4 = three cardiology then one general medicine.
 - **High level.** Teach the shape of the subject and what it means for practice, not the
   molecular detail. The first lesson explained bisulfite conversion and elastic-net
   regression; that is the wrong altitude.
@@ -87,9 +92,10 @@ therapeutics, gene therapy.
   completeness check, so lowering that one number shortens the lesson.
 
 How it works, three steps after `curate.py`:
-1. Claude reads the finished review, titles of the unselected candidates, past topics
-   (`education/history.json`) and `education.requested_topics`, and returns a topic,
-   the questions to answer, and up to 7 PubMed searches.
+1. The area for the week is decided from the history file, then Claude reads the
+   finished review, titles of the unselected candidates, past topics with their areas
+   (`education/history.json`) and `education.requested_topics`, and returns a topic in
+   that area, the questions to answer, and up to 7 PubMed searches.
 2. The searches run against all of PubMed (no date limit, best match, top 8 each).
 3. Claude writes the lesson from those abstracts as structured JSON; `render_lesson`
    turns it into markdown with numbered references.

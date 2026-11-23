@@ -46,6 +46,7 @@ TOPIC_SCHEMA = {
     "type": "object",
     "properties": {
         "topic": {"type": "string"},
+        "area": {"type": "string", "enum": ["cardiology", "general_medicine"]},
         "why_now": {"type": "string"},
         "trigger_pmids": {"type": "array", "items": {"type": "string"}},
         "questions": {"type": "array", "items": {"type": "string"}},
@@ -59,7 +60,7 @@ TOPIC_SCHEMA = {
             },
         },
     },
-    "required": ["topic", "why_now", "trigger_pmids", "questions", "searches"],
+    "required": ["topic", "area", "why_now", "trigger_pmids", "questions", "searches"],
     "additionalProperties": False,
 }
 
@@ -138,24 +139,24 @@ lesson.
 {guidance}
 </what_he_asked_for>
 
-Scope. The topic must come from one of two places, and nowhere else:
-- cardiology, anywhere in the field; or
-- general medicine, and there specifically a therapy, drug class or therapeutic \
-technology with broad application across medicine, the kind of thing that turns up in \
-several specialties at once and that he will meet in his own patients whoever started it.
-Do not choose a topic in artificial intelligence, medical education, longevity or aging \
-biology, however interesting the week's papers in those areas are; those sections of his \
-review exist to keep him current, not to set the lesson. Do not choose a purely \
-methodological topic, such as a statistical or trial-design technique, unless it is \
-inseparable from a therapy he needs to understand.
+Scope. Lessons rotate between two areas on a fixed cycle, and the area for this week is \
+already decided. {required_area_block}
 
-How to choose. Read this week's review and the other papers published this week, and ask \
+Whichever area is due, do not choose a topic in artificial intelligence, medical \
+education, longevity or aging biology, however interesting the week's papers in those \
+areas are; those sections of his review exist to keep him current, not to set the lesson. \
+Do not choose a purely methodological topic, such as a statistical or trial-design \
+technique, unless it is inseparable from a therapy he needs to understand.
+
+How to choose, within that area. Read this week's review and the other papers published \
+this week, and ask \
 what a sharp clinician in his position would need to already understand to read those \
 papers well, and probably does not: a drug class or delivery technology that arrived \
 after his training, a body of trials whose story he has only seen in pieces, a mechanism \
 that several new therapies share. The best topic is one where a week's paper is the \
-visible tip of something larger. Look at the list of past lessons and move around the \
-two areas rather than staying in one corner of them.
+visible tip of something larger. Look at the list of past lessons, which gives each \
+lesson's area, and move around within this week's area rather than staying in one corner \
+of it.
 
 Scope it like a crisp grand rounds overview: narrow enough to teach properly in about \
 {target_words} words, broad enough to be a subject and not a single paper. \
@@ -171,6 +172,7 @@ suggests a better topic.
 
 Fields:
 - topic: the lesson's subject as a short title, 12 words at most.
+- area: "{required_area}", confirming the topic belongs to the area due this week.
 - why_now: two or three sentences, 60 words at most, addressed to him as "you", saying \
 which of this week's papers raised the topic and what gap the lesson fills.
 - trigger_pmids: the PMIDs of the papers from this week that prompted the topic, at most \
@@ -299,13 +301,28 @@ def latest(pattern):
     return files[-1] if files else None
 
 
+# Lessons rotate: `cycle - 1` cardiology lessons, then one general medicine, and so on.
+# The area is chosen here, not by the model, and is read back from the history file so a
+# missed or failed week does not shift the pattern.
+AREAS = {"cardiology": "Cardiology", "general_medicine": "General medicine"}
+
+
+def area_due(history, cycle):
+    if cycle < 2:
+        return "cardiology"
+    recent = [h.get("area", "cardiology") for h in history[-(cycle - 1):]]
+    if len(recent) == cycle - 1 and all(a == "cardiology" for a in recent):
+        return "general_medicine"
+    return "cardiology"
+
+
 def load_history():
     if HISTORY_PATH.exists():
         return json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
     return []
 
 
-def topic_request(review_md, data, sections, history, requested):
+def topic_request(review_md, data, sections, history, requested, required_area):
     review = review_md.split("## Verification Notes")[0].strip() if review_md else ""
     selected = set(re.findall(r"pubmed\.ncbi\.nlm\.nih\.gov/(\d+)", review))
     lines = ["<this_weeks_review>", review or "(No review was produced this week.)",
@@ -320,10 +337,12 @@ def topic_request(review_md, data, sections, history, requested):
             lines.append(f"{s['title']}:")
             lines += [f"- PMID {a['pmid']}: {a['title']} ({a['journal']})" for a in arts[:25]]
     lines += ["</other_papers_this_week>", "", "<past_lessons>"]
-    lines += [f"- {h['date']}: {h['topic']}" for h in history] or ["None yet; this is the first lesson."]
+    lines += [f"- {h['date']} [{AREAS.get(h.get('area', 'cardiology'), 'Cardiology')}]: {h['topic']}"
+              for h in history] or ["None yet; this is the first lesson."]
     lines += ["</past_lessons>", "", "<topics_he_has_asked_for>"]
     lines += [f"- {t}" for t in requested] or ["None listed."]
-    lines += ["</topics_he_has_asked_for>"]
+    lines += ["</topics_he_has_asked_for>", "",
+              f"This week's area, already decided: {AREAS[required_area]}."]
     return "\n".join(lines)
 
 
@@ -583,24 +602,31 @@ def educate():
     day = f"{today:%Y-%m-%d}"
     per_search = edu.get("per_search", 10)
     target_words = edu.get("target_words", 1100)
+    cycle = max(1, int(edu.get("cycle", 4)))
+    required_area = area_due(history, cycle)
     profile = " ".join(config.get("reader_profile", "").split())
     guidance = " ".join(edu.get("guidance", "").split())
     notes = []
 
     curator = Curator(config)
 
-    print("=== Choosing the topic ===")
+    print(f"=== Choosing the topic ({AREAS[required_area]}; "
+          f"1 general medicine lesson every {cycle}) ===")
     plan = json.loads(curator.ask(
         TOPIC_SYSTEM.format(reader_profile=profile, guidance=guidance,
                             max_searches=edu.get("max_searches", 8), per_search=per_search,
-                            target_words=target_words,
+                            target_words=target_words, required_area=required_area,
+                            required_area_block=(CARDIOLOGY_BLOCK if required_area == "cardiology"
+                                                 else GENERAL_BLOCK.format(cycle=cycle)),
                             today=f"{today:%B %-d, %Y}", recent_year=today.year - 1),
         topic_request(review_md, data, config["sections"], history,
-                      edu.get("requested_topics") or []),
+                      edu.get("requested_topics") or [], required_area),
         TOPIC_SCHEMA))
     plan["searches"] = plan["searches"][:edu.get("max_searches", 8)]
     plan["trigger_pmids"] = [p for p in (re.sub(r"\D", "", x) for x in plan["trigger_pmids"])
                              if p in known][:3]
+    # The rotation is ours to keep, not the model's: record the area that was due.
+    plan["area"] = required_area
     print(f"Topic: {plan['topic']}")
 
     print("=== Gathering sources from PubMed ===")
@@ -650,7 +676,8 @@ def educate():
 
     # Remember the topic so it is not taught again. The workflow commits this file.
     history = [h for h in history if h["date"] != day]
-    history.append({"date": day, "topic": tidy(plan["topic"]), "title": tidy(lesson["title"])})
+    history.append({"date": day, "area": required_area, "topic": tidy(plan["topic"]),
+                    "title": tidy(lesson["title"])})
     HISTORY_PATH.parent.mkdir(exist_ok=True)
     HISTORY_PATH.write_text(json.dumps(history, indent=1, ensure_ascii=False) + "\n",
                             encoding="utf-8")

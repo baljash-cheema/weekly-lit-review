@@ -58,6 +58,11 @@ education:
     of an antisense oligonucleotide should prompt a lesson on RNA-targeted therapy: what
     an ASO is, how the technology works, how it fits into the landscape, which drugs
     exist, and where it has been used before.
+  # Lessons rotate: this many lessons per cycle, of which the last is general medicine
+  # and the rest are cardiology. 4 = three cardiology, then one general medicine.
+  # 2 alternates; a large number means every lesson is cardiology. The area is decided
+  # from education/history.json, so a skipped week does not shift the pattern.
+  cycle: 4
   # Topics I have asked about. One is used when it fits the week's papers, or in a week
   # with nothing better; each is taught once. Add a line to request a lesson.
   requested_topics:

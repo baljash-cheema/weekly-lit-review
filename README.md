@@ -52,8 +52,9 @@ RNA-targeted therapy as a whole.
 
 It is deliberately about 1,100 words and pitched at overview level: the shape of a
 subject and what it means for practice, not a molecular review. Mine draws topics only
-from cardiology and from broadly applicable therapies in general medicine; both the
-scope and the length are settings.
+from cardiology and from broadly applicable therapies in general medicine, on a rotation
+of three cardiology lessons to one general-medicine lesson; the scope, the rotation and
+the length are all settings.
 
 To ground the lesson, Claude writes a set of PubMed searches for the topic's landmark
 trials, reviews and guidelines; the program runs them and hands the abstracts back.
