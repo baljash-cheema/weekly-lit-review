@@ -228,7 +228,8 @@ sections, then the key trials, the take-home points and the further reading. Fil
 - title: the lesson's title, 12 words at most. No "Weekly Lesson:" prefix.
 - bottom_line: three sentences at most, 65 words at most. If he reads nothing else, what \
 should he now know?
-- sections: three to five sections that carry the teaching, in an order that builds. \
+- sections: three or four sections that carry the teaching, 250 words each at most, in \
+an order that builds. \
 Choose headings that fit the topic rather than a fixed template; phrasing a heading as \
 the question it answers often works. Between them the sections should cover: the \
 fundamentals, defined plainly (what the thing is and how it works, with the mechanism \
@@ -236,8 +237,9 @@ explained rather than named); why it matters for patients, especially his; how t
 evidence unfolded, told as a story with the negative and neutral trials given the same \
 attention as the positive ones; what is actually available or in use now; the caveats, \
 controversies and common misreadings; and what is coming next. Cover them in the space \
-you have rather than giving each its own section; two paragraphs is usually the right \
-size for a section and three is the most any section should have. Define every term of \
+you have rather than giving each its own section: with four sections at 250 words you \
+cannot give each theme its own, so combine them. Two paragraphs is the right size for a \
+section and three is the most any section should have. Define every term of \
 art the first time it appears. Use an analogy when it truly clarifies a mechanism, not \
 for decoration.
 - tables: zero or one table, for content that is naturally a comparison, such as \
@@ -514,7 +516,7 @@ def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
                              "Check against the paper.")
             year = f" · {a['year']}" if a.get("year") else ""
             out += [f"### [{refs.plain(t['name'])}]({a['url']})",
-                    f"*{clean_title(a['title'])}. {a['journal']}{year} · {a['authors']}*", "",
+                    f"*{clean_title(a['title'])}. {a['journal']}{year}*", "",
                     f"**Design:** {design}", "", f"**Results:** {results}", "",
                     f"**Takeaway:** {refs.plain(t['takeaway'])}", ""]
 
