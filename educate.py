@@ -810,8 +810,21 @@ def educate():
                                   page_words=round(target_words * 1.6 / 50) * 50,
                                   today=f"{today:%B %-d, %Y}")
     request = lesson_request(plan, sources, triggers, news)
-    for attempt in (1, 2):
-        lesson = json.loads(curator.ask(system, request, LESSON_SCHEMA))
+    for attempt in (1, 2, 3):
+        reply = curator.ask(system, request, LESSON_SCHEMA)
+        try:
+            lesson = json.loads(reply)
+        except json.JSONDecodeError as e:
+            # A malformed structured reply is worth one more try; it is usually a stray
+            # quote in a long field, and the lesson step must not take the review down.
+            print(f"  attempt {attempt}: the reply was not valid JSON ({e}).")
+            (REPORTS_DIR / f"lesson_{day}_bad_reply.txt").write_text(reply, encoding="utf-8")
+            notes.append("The first attempt at this lesson came back malformed and was "
+                         "rewritten.")
+            request += ("\n\nYour previous reply was not valid JSON. Return the lesson as "
+                        "a single valid JSON object matching the schema, taking care to "
+                        "escape any quotation mark inside a string.")
+            continue
         (REPORTS_DIR / f"lesson_{day}.json").write_text(
             json.dumps({"plan": plan, "lesson": lesson}, indent=1, ensure_ascii=False),
             encoding="utf-8")
@@ -825,12 +838,12 @@ def educate():
                 and lesson["further_reading"]):
             break
         print("  The lesson came back incomplete.")
-        request += ("\n\nA first attempt at this lesson stopped after its opening section. "
+        request += ("\n\nA previous attempt at this lesson stopped after its opening section. "
                     "Write the complete lesson: every section, the key trials, the take-home "
                     "points and the further reading, which must list two to four of the "
                     "supplied records.")
     else:
-        sys.exit("ERROR: the lesson came back incomplete twice; nothing was written.")
+        sys.exit("ERROR: the lesson could not be written after three attempts.")
 
     model_label = ", ".join(sorted(curator.models_used)) or curator.model
     text = render_lesson(lesson, plan, sources, triggers, notes, model_label, day,

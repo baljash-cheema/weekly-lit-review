@@ -28,3 +28,4 @@ __pycache__/
 
 # Local Claude Code settings
 .claude/
+*_bad_reply.txt
