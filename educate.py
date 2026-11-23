@@ -42,6 +42,69 @@ CANDIDATES_PATH = BASE_DIR / "data" / "candidates.json"
 REPORTS_DIR = BASE_DIR / "reports"
 HISTORY_PATH = BASE_DIR / "education" / "history.json"
 
+# Records fetched per recency term (newest first), on top of the relevance searches.
+RECENT_PER_TERM = 6
+
+# The model's own knowledge ends months before any given run, and a trial presented at a
+# meeting last week exists only in slides, a press release and the news until PubMed
+# catches up. So each lesson begins with a web search for the topic's current state.
+WEB_SEARCH_TOOL = {"type": "web_search_20260209", "name": "web_search", "max_uses": 8}
+
+NEWS_SYSTEM = """You are checking the current state of one medical topic for a lesson \
+being written today, {today}.
+
+Your own knowledge of this field ends months ago, and the lesson must not state as \
+pending or unknown something that has already happened. Use web search to establish what \
+is true now. Search the things that move between a trial's design and its publication: \
+results presented at the major meetings (AHA Scientific Sessions, ACC, ESC, TCT, HFSA, \
+ADA, ASN, ASCO and the like), company press releases and topline announcements, \
+regulatory decisions and label changes, guideline releases, and trials stopped early. \
+Search by trial name and by drug name, and search for the current year explicitly.
+
+Report what you find as a short, factual list, newest first, at most 350 words. For each \
+item give: what happened, the date, the headline numbers if they were released, and the \
+source as a markdown link. Mark each item as one of: peer-reviewed publication, \
+conference presentation, company press release, or regulatory announcement. Say plainly \
+when a result was presented but not yet published, and when a trial everyone expects to \
+have reported has not. Quote only numbers your sources state.
+
+If search returns nothing useful for this topic, say exactly that in one line rather \
+than filling the space from memory. Do not write the lesson, do not teach, and do not \
+give advice: this is a factual briefing for the writer."""
+
+NEWS_REQUEST = """Topic of the lesson: {topic}
+
+Specific things to check for new developments: {terms}
+
+Questions the lesson will answer, for context:
+{questions}
+
+What is the current state of this topic as of {today}?"""
+
+
+def web_notes(curator, plan, today, notes):
+    """Search the web for what has happened on this topic since the model's knowledge ends.
+
+    Returns (briefing text, the set of URLs it cited). The lesson may link only to those,
+    so a fabricated link cannot reach the page.
+    """
+    try:
+        text = curator.ask(
+            NEWS_SYSTEM.format(today=today),
+            NEWS_REQUEST.format(topic=plan["topic"], today=today,
+                                terms=", ".join(plan.get("recency_terms") or ["(none given)"]),
+                                questions="\n".join(f"- {tidy(q)}" for q in plan["questions"])),
+            tools=[WEB_SEARCH_TOOL])
+    except Exception as e:
+        print(f"  FAILED: {e}")
+        notes.append(f"The web search for recent developments failed ({type(e).__name__}), "
+                     "so this lesson rests on PubMed and the model's own knowledge; treat "
+                     "anything it calls pending or awaited with care.")
+        return "", set()
+    urls = set(re.findall(r"https?://[^\s)\]<>\"']+", text))
+    print(f"  {len(text.split())} words, {len(urls)} sources")
+    return text.strip(), urls
+
 TOPIC_SCHEMA = {
     "type": "object",
     "properties": {
@@ -50,6 +113,7 @@ TOPIC_SCHEMA = {
         "why_now": {"type": "string"},
         "trigger_pmids": {"type": "array", "items": {"type": "string"}},
         "questions": {"type": "array", "items": {"type": "string"}},
+        "recency_terms": {"type": "array", "items": {"type": "string"}},
         "searches": {
             "type": "array",
             "items": {
@@ -60,7 +124,8 @@ TOPIC_SCHEMA = {
             },
         },
     },
-    "required": ["topic", "area", "why_now", "trigger_pmids", "questions", "searches"],
+    "required": ["topic", "area", "why_now", "trigger_pmids", "questions", "recency_terms",
+                 "searches"],
     "additionalProperties": False,
 }
 
@@ -214,6 +279,11 @@ three, taken only from the PMIDs shown to you. Empty if the topic came from his 
 starting from the fundamentals (what is it, how does it work), through why it matters \
 for patients, what the trials show, what is available now, to the caveats and what is \
 coming. Keep them the questions a busy clinician would actually ask, not a syllabus.
+- recency_terms: two to four short PubMed queries naming the things in this topic whose \
+newest literature must not be missed: the drugs, the trial names, the technology. Plain \
+terms, no date filters and no field tags beyond [tiab] — these are run separately, sorted \
+by date, so that the most recently indexed papers are retrieved whatever their relevance \
+rank. "ziltivekimab" and "IL-6 inhibition atherosclerosis" are the right shape.
 - searches: up to {max_searches} PubMed searches, or fewer, that together retrieve the sources \
 a careful teacher would want: the landmark trials (search them by trial name or drug \
 name), authoritative recent reviews, guidelines and scientific statements, the \
@@ -311,6 +381,16 @@ Citations belong in the section paragraphs and table cells; do not put them in t
 bottom_line or key_trials.
 - Where a supplied record is more recent than, or conflicts with, what you remember, \
 trust the record and say what changed.
+- The recent_developments block, when present, is the result of a web search run today \
+and is more current than both your knowledge and some of the records. Treat it as the \
+present state of the field: never write that a trial is awaited, pending or unreported \
+if that block says it has reported, and give its result where it bears on the lesson. \
+Where it contradicts your memory, follow it and say what changed. Cite one of its items \
+by putting its source as a markdown link inline, like \
+[AHA Scientific Sessions, November 2026](https://example.org/page), using only URLs that \
+appear in that block; any other URL is removed automatically. Say in the sentence when a \
+result was presented or announced but not yet peer-reviewed, since its numbers are not \
+verifiable from an abstract.
 - Name a trial, a drug or a guideline recommendation from memory only when you are \
 confident of it. When you are less sure, describe it in general terms. Never invent a \
 trial name, a number or a regulatory status.
@@ -383,11 +463,11 @@ def topic_request(review_md, data, sections, history, requested, required_area):
 # PubMed
 # ---------------------------------------------------------------------------
 
-def search_all_years(query, retmax):
-    """Top PMIDs for a query by PubMed's best-match ranking, with no date limit."""
+def search_all_years(query, retmax, sort="relevance"):
+    """Top PMIDs for a query, with no date limit. sort="date" gives newest first."""
     result = get(f"{PUBMED_BASE}/esearch.fcgi",
                  {"db": "pubmed", "retmode": "json", "retmax": retmax, "term": query,
-                  "sort": "relevance"}).json().get("esearchresult", {})
+                  "sort": sort}).json().get("esearchresult", {})
     if "ERROR" in result:
         raise RuntimeError(result["ERROR"])
     time.sleep(0.4)
@@ -395,7 +475,22 @@ def search_all_years(query, retmax):
 
 
 def gather_sources(plan, known, per_search, max_sources, notes):
-    """Run the planned searches and return the records, the week's trigger papers first."""
+    """Run the planned searches and return the records, the week's trigger papers first.
+
+    Best-match ranking buries a trial's brand-new results paper under its older, more
+    cited ones, so the newest literature is fetched separately, sorted by date. That is
+    how a result published days ago reaches the lesson at all.
+    """
+    newest = []
+    for term in plan.get("recency_terms", [])[:4]:
+        try:
+            ids = search_all_years(" ".join(term.split()), RECENT_PER_TERM, sort="date")
+            print(f"  {len(ids):2d}  newest first: {term}")
+            newest += [i for i in ids if i not in newest]
+        except Exception as e:
+            print(f"  FAILED  newest first: {term}: {e}")
+            notes.append(f"A search for the newest work on {term!r} failed.")
+
     hits = []
     for s in plan["searches"]:
         try:
@@ -408,8 +503,10 @@ def gather_sources(plan, known, per_search, max_sources, notes):
             print(f"  FAILED  {s['purpose']}: {e}")
             notes.append(f"A background search failed ({s['purpose']}).")
 
-    # Take results in turn from each search so every search is represented under the cap.
+    # The week's triggers and the newest records come first and are never squeezed out;
+    # then one result in turn from each search, so every search is represented.
     order = [p for p in plan["trigger_pmids"] if p in known]
+    order += [p for p in newest if p not in order]
     for rank in range(per_search):
         for ids in hits:
             if rank < len(ids) and ids[rank] not in order:
@@ -439,8 +536,12 @@ def source_block(a):
             + f"Abstract: {abstract}\n</record>")
 
 
-def lesson_request(plan, sources, triggers):
+def lesson_request(plan, sources, triggers, news=""):
     lines = [f"Topic: {plan['topic']}", "", "Why it was chosen: " + tidy(plan["why_now"]), ""]
+    if news:
+        lines += ["<recent_developments>",
+                  "Found by a web search run today. More current than the records below "
+                  "and than your own knowledge.", "", news, "</recent_developments>", ""]
     if triggers:
         lines += ["Papers from this week's review that prompted it (also among the records):"]
         lines += [f"- PMID {a['pmid']}: {a['title']}" for a in triggers] + [""]
@@ -464,14 +565,33 @@ def tidy(text):
     return " ".join(str(text).split())
 
 
-class References:
-    """Turns [PMID n] markers into numbered links and keeps the reference list."""
+LINK_RE = re.compile(r"\[([^\[\]]*)\]\((https?://[^)\s]+)\)")
 
-    def __init__(self, sources, notes):
+
+class References:
+    """Turns [PMID n] markers into numbered links and keeps the reference list.
+
+    Also strips any web link the search did not actually return, so a URL the model
+    reconstructed from memory never reaches the page.
+    """
+
+    def __init__(self, sources, notes, allowed_urls=()):
         self.sources = {a["pmid"]: a for a in sources}
         self.order = []
         self.notes = notes
         self.dropped = set()
+        self.allowed = set(allowed_urls)
+        self.bad_links = set()
+
+    def _check_link(self, match):
+        text, url = match.group(1), match.group(2)
+        if url in self.allowed or "pubmed.ncbi.nlm.nih.gov" in url or "doi.org" in url:
+            return match.group(0)
+        if url not in self.bad_links:
+            self.bad_links.add(url)
+            self.notes.append(f"Removed a link to {url}, which the web search did not "
+                              "return. The claim it supported is unverified.")
+        return text
 
     def number(self, pmid):
         if pmid not in self.order:
@@ -492,11 +612,13 @@ class References:
         return (" " + "".join(links)) if links else ""
 
     def cite(self, text):
-        return BARE_PMID_RE.sub("", CITE_RE.sub(self._swap, tidy(text))).strip()
+        text = LINK_RE.sub(self._check_link, tidy(text))
+        return BARE_PMID_RE.sub("", CITE_RE.sub(self._swap, text)).strip()
 
     def plain(self, text):
-        """For fields that should carry no citations at all."""
-        return BARE_PMID_RE.sub("", CITE_RE.sub("", tidy(text))).strip()
+        """For fields that should carry no PMID citations; web links are still checked."""
+        text = LINK_RE.sub(self._check_link, tidy(text))
+        return BARE_PMID_RE.sub("", CITE_RE.sub("", text)).strip()
 
     def listing(self):
         out = []
@@ -520,8 +642,8 @@ def render_table(table, refs):
     return out + [""]
 
 
-def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
-    refs = References(sources, notes)
+def render_lesson(lesson, plan, sources, triggers, notes, model_label, day, allowed_urls=()):
+    refs = References(sources, notes, allowed_urls)
     by_pmid = refs.sources
 
     out = [f"# Weekly Lesson: {refs.plain(lesson['title'])}", "", "", "", "## Why this topic", "",
@@ -602,7 +724,12 @@ def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
 
     out += ["## About this lesson", "",
             f"- The topic was chosen by {model_label} from this week's review and the list of "
-            "past lessons. " + f"{len(sources)} PubMed records were retrieved for it.",
+            "past lessons. "
+            + f"{len(sources)} PubMed record{'s' if len(sources) != 1 else ''} "
+            + ("were" if len(sources) != 1 else "was") + " retrieved for it"
+            + (f", and a web search run on the day found {len(allowed_urls)} further "
+               f"source{'s' if len(allowed_urls) != 1 else ''} for the current state of "
+               "the field" if allowed_urls else "") + ".",
             "- Every reference, key trial and further-reading entry is a PubMed record that the "
             "searches returned; titles, authors, journals and years come from PubMed. Numbers in "
             "The Key Trials are checked automatically against each abstract.",
@@ -662,6 +789,9 @@ def educate():
     plan["area"] = required_area
     print(f"Topic: {plan['topic']}")
 
+    print("=== Checking the current state of the topic on the web ===")
+    news, allowed_urls = web_notes(curator, plan, f"{today:%B %-d, %Y}", notes)
+
     print("=== Gathering sources from PubMed ===")
     sources = gather_sources(plan, known, per_search, edu.get("max_sources", 50), notes)
     print(f"{len(sources)} records")
@@ -678,7 +808,7 @@ def educate():
                                   max_words=round(target_words * 1.35 / 50) * 50,
                                   page_words=round(target_words * 1.6 / 50) * 50,
                                   today=f"{today:%B %-d, %Y}")
-    request = lesson_request(plan, sources, triggers)
+    request = lesson_request(plan, sources, triggers, news)
     for attempt in (1, 2):
         lesson = json.loads(curator.ask(system, request, LESSON_SCHEMA))
         (REPORTS_DIR / f"lesson_{day}.json").write_text(
@@ -702,7 +832,8 @@ def educate():
         sys.exit("ERROR: the lesson came back incomplete twice; nothing was written.")
 
     model_label = ", ".join(sorted(curator.models_used)) or curator.model
-    text = render_lesson(lesson, plan, sources, triggers, notes, model_label, day)
+    text = render_lesson(lesson, plan, sources, triggers, notes, model_label, day,
+                         allowed_urls)
 
     path = REPORTS_DIR / f"lesson_{day}.md"
     path.write_text(text, encoding="utf-8")

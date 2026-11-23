@@ -192,33 +192,49 @@ class Curator:
         self.usage = {"input": 0, "output": 0}
         self.models_used = set()
 
-    def ask(self, system, user, schema=None):
-        """One streamed request. Returns the text of the reply (JSON text if schema given)."""
+    def ask(self, system, user, schema=None, tools=None, max_rounds=6):
+        """One streamed request. Returns the text of the reply (JSON text if schema given).
+
+        With `tools` (server-side tools such as web search) the model may stop with
+        `pause_turn` partway through its own tool use; the conversation is handed back
+        unchanged to let it continue, up to max_rounds times.
+        """
         output_config = {"effort": self.effort}
         if schema:
             output_config["format"] = {"type": "json_schema", "schema": schema}
-        with self.client.beta.messages.stream(
-            model=self.model,
-            max_tokens=32000,
-            thinking={"type": "adaptive"},
-            output_config=output_config,
-            # If a safety classifier declines a request (medical abstracts occasionally
-            # trip one), the API retries it on Anthropic's recommended fallback model.
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        ) as stream:
-            message = stream.get_final_message()
+        messages = [{"role": "user", "content": user}]
+        texts = []
+        for _ in range(max_rounds):
+            kwargs = dict(
+                model=self.model,
+                max_tokens=32000,
+                thinking={"type": "adaptive"},
+                output_config=output_config,
+                # If a safety classifier declines a request (medical abstracts
+                # occasionally trip one), the API retries it on Anthropic's
+                # recommended fallback model.
+                betas=["server-side-fallback-2026-07-01"],
+                fallbacks="default",
+                system=system,
+                messages=messages,
+            )
+            if tools:
+                kwargs["tools"] = tools
+            with self.client.beta.messages.stream(**kwargs) as stream:
+                message = stream.get_final_message()
 
-        self.usage["input"] += message.usage.input_tokens
-        self.usage["output"] += message.usage.output_tokens
-        self.models_used.add(message.model)
-        if message.stop_reason == "refusal":
-            raise RuntimeError("the request was declined by the model")
-        if message.stop_reason == "max_tokens":
-            raise RuntimeError("the reply was cut off (max_tokens)")
-        return "".join(b.text for b in message.content if b.type == "text")
+            self.usage["input"] += message.usage.input_tokens
+            self.usage["output"] += message.usage.output_tokens
+            self.models_used.add(message.model)
+            if message.stop_reason == "refusal":
+                raise RuntimeError("the request was declined by the model")
+            if message.stop_reason == "max_tokens":
+                raise RuntimeError("the reply was cut off (max_tokens)")
+            texts += [b.text for b in message.content if b.type == "text"]
+            if message.stop_reason != "pause_turn":
+                break
+            messages = messages + [{"role": "assistant", "content": message.content}]
+        return "".join(texts)
 
 
 def candidate_block(a):
