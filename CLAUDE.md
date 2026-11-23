@@ -57,6 +57,19 @@ at the gate, and when GitHub is hours late they land after midnight. The job set
 `TZ=America/Chicago`, so report dates and file names are Chicago dates. Do not cut the
 schedule back to a single cron line.
 
+### Keeping the lesson current (added 2026-11-23; do not remove)
+The first emailed lesson called IL-6 inhibition an open question although ZEUS had
+reported as neutral at AHA 17 days earlier and was already in PubMed. Josh's rule: check
+the most current state of the literature, including the major cardiovascular meetings,
+news and press releases. Two mechanisms in `educate.py`:
+- `recency_terms` from the model are searched with `sort="date"`, newest first, and those
+  records jump the `max_sources` cap. Relevance ranking alone hides a brand-new results
+  paper behind the trial's older, more cited ones.
+- `web_notes()` runs the server-side `web_search_20260209` tool before the lesson is
+  written and hands back a dated briefing with links; the lesson must treat it as the
+  present state and never call reported work pending. Links are allowlisted to URLs the
+  search returned. Costs about six times the input tokens, so a lesson is now $2-3.
+
 ### Guards against invented content (keep these if you change curate.py)
 - Claude can only pick PMIDs from the candidate list; others are dropped and noted.
 - Title, authors, journal, links are filled from PubMed data, never model output.
