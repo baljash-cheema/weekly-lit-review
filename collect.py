@@ -119,8 +119,14 @@ def parse_article(art):
         if aid.get("IdType") == "doi":
             doi = aid.text or ""
 
+    pub = article.find("Journal/JournalIssue/PubDate")
+    year = ""
+    if pub is not None:
+        year = pub.findtext("Year") or (pub.findtext("MedlineDate") or "")[:4]
+
     return {
         "pmid": pmid,
+        "year": year,
         "title": _text(article.find("ArticleTitle")),
         "authors": author_str,
         "journal": medline.findtext("MedlineJournalInfo/MedlineTA", "")

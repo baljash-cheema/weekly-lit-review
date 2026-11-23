@@ -37,6 +37,32 @@ max_also_notable: 3
 slides:
   sections: [ai_medicine, ai_meded]
 
+# ---------------------------------------------------------------------------
+# The weekly lesson: a second email, sent with the review, that teaches one topic.
+# ---------------------------------------------------------------------------
+education:
+  # What the lessons are for. Plain English; edit freely.
+  guidance: >
+    Continuing education. Each week, look across what is happening in general medicine,
+    cardiology, AI in medicine, AI in medical education and longevity, work out where
+    the gaps in my knowledge are likely to be, pick one topic I need to understand
+    better to stay current, and teach it to me. For example, a negative trial of an
+    anti-inflammatory drug in cardiovascular disease should prompt a lesson on
+    inflammation in cardiology: what inflammation is, how it matters to cardiovascular
+    disease, what the trials have shown, the caveats, and the wider literature. A trial
+    of an antisense oligonucleotide should prompt a lesson on RNA-targeted therapy: what
+    an ASO is, how the technology works, how it fits into the landscape, which drugs
+    exist, and where it has been used before.
+  # Topics I have asked about. One is used when it fits the week's papers, or in a week
+  # with nothing better; each is taught once. Add a line to request a lesson.
+  requested_topics:
+    - Inflammation in cardiovascular disease, from mechanism to the anti-inflammatory trials
+    - RNA-targeted therapeutics, antisense oligonucleotides and siRNA
+    - Gene therapy and gene editing in medicine and cardiology
+  max_searches: 8    # background PubMed searches per lesson
+  per_search: 10     # top results kept from each search
+  max_sources: 50    # most PubMed records handed to Claude for one lesson
+
 # Hard cap on full write-ups per section in the final report (fewer is fine).
 max_per_section: 5
 

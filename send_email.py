@@ -6,11 +6,13 @@ Usage:
     python send_email.py reports/review_2026-11-13.md --attach deck.pptx
     python send_email.py reports/review_2026-11-13.md --html out.html # just save the HTML
                                                                       # (used to make the PDF)
+    python send_email.py reports/lesson_2026-11-27.md --subject "Weekly Lesson: ..."
 
 Needs REVIEW_EMAIL and GMAIL_APP_PASSWORD (environment or .env) to send.
 """
 
 import argparse
+import html
 import os
 import smtplib
 import sys
@@ -41,6 +43,7 @@ STYLE = """
     table { border-collapse: collapse; width: 100%; margin: 15px 0; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
     th { background-color: #f2f2f2; }
+    li { line-height: 1.5; margin: 4px 0; }
     blockquote { border-left: 3px solid #ccc; padding-left: 12px; color: #666; }
     @page { margin: 18mm 16mm; }
     @media print { body { padding: 0; font-size: 11pt; } h2 { break-after: avoid; } h3 { break-after: avoid; } }
@@ -54,11 +57,13 @@ def load_config():
 
 def render_html(report_md):
     body = markdown.markdown(report_md, extensions=["tables", "fenced_code"])
-    return (f'<html>\n<head>\n<meta charset="utf-8">\n<title>Weekly Literature Review</title>\n'
+    first = report_md.lstrip().splitlines()[0] if report_md.strip() else ""
+    title = html.escape(first[2:].strip()) if first.startswith("# ") else "Weekly Literature Review"
+    return (f'<html>\n<head>\n<meta charset="utf-8">\n<title>{title}</title>\n'
             f"<style>{STYLE}</style>\n</head>\n<body>\n{body}\n</body>\n</html>\n")
 
 
-def send_report(report_md, attachments=()):
+def send_report(report_md, attachments=(), subject=SUBJECT):
     email_cfg = load_config()["email"]
     app_password = os.getenv("GMAIL_APP_PASSWORD", "").strip()
 
@@ -77,7 +82,7 @@ def send_report(report_md, attachments=()):
     body.attach(MIMEText(render_html(report_md), "html", "utf-8"))
 
     msg = MIMEMultipart("mixed")
-    msg["Subject"] = SUBJECT
+    msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = recipient
     msg.attach(body)
@@ -101,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--html", metavar="PATH", help="save the formatted page here instead of emailing")
     parser.add_argument("--attach", metavar="FILE", nargs="*", default=[],
                         help="files to attach (missing files are skipped)")
+    parser.add_argument("--subject", default=SUBJECT, help="subject line of the email")
     args = parser.parse_args()
 
     text = Path(args.report).read_text(encoding="utf-8")
@@ -108,4 +114,4 @@ if __name__ == "__main__":
         Path(args.html).write_text(render_html(text), encoding="utf-8")
         print(f"Saved {args.html}")
     else:
-        send_report(text, [f for f in args.attach if Path(f).is_file()])
+        send_report(text, [f for f in args.attach if Path(f).is_file()], args.subject or SUBJECT)

@@ -1,7 +1,8 @@
 # Weekly Literature Review Agent
 
 A small, unattended program that emails one physician a curated review of the week's
-most important medical literature every Friday morning.
+most important medical literature every Friday morning, and a second email that teaches
+one topic in depth.
 
 It searches PubMed for everything published that week in a set of topic areas, asks
 Claude to pick the handful of studies that genuinely matter and explain why, and sends
@@ -38,6 +39,24 @@ My sections are cardiology (with extra weight on heart failure, transplant and
 hypertrophic cardiomyopathy), AI in medicine, AI in medical education, longevity
 medicine, and a themes digest of general medicine. All of that is configuration, not
 code.
+
+## The weekly lesson
+
+A second email goes out with the review. Keeping up with new papers is not the same as
+understanding the ground they stand on, so each week the program reads its own review,
+asks what I would need to understand better to read those papers well, picks one topic,
+and teaches it: what the thing is and how it works, why it matters for patients, how the
+trials unfolded (negative ones included), what is available now, the caveats, and what
+is coming. A trial of an antisense oligonucleotide, for example, prompts a lesson on
+RNA-targeted therapy as a whole.
+
+To ground the lesson, Claude writes a set of PubMed searches for the topic's landmark
+trials, reviews and guidelines; the program runs them and hands the abstracts back.
+Every reference in the lesson is one of those records, the numbers in its Key Trials
+block are checked against the abstracts, and topics already taught are remembered in
+`education/history.json` so none repeats. The teaching text itself draws on the model's
+own knowledge and is labelled as not machine-verified. You can request topics by adding
+a line under `education: requested_topics` in `config.yaml`.
 
 ## Design choices
 
@@ -89,15 +108,19 @@ curate.py       Sends each section's candidates to Claude, which selects and wri
 send_email.py   Converts the report to a formatted email and sends it through Gmail.
 make_slides.py  Builds a plain PowerPoint deck: one slide per full write-up in the
                 sections you choose (set under `slides` in config.yaml).
+educate.py      Writes the weekly lesson: Claude picks the topic from the finished
+                review, the program gathers the background literature from PubMed,
+                and Claude teaches it. Sent as its own email.
 ```
 
 `.github/workflows/weekly-review.yml` runs those steps every Friday, attaches the deck
-to the email, and saves a PDF of the review to `archive/` and the deck to `slides/`.
+to the email, and saves PDFs of the review and the lesson to `archive/` and the deck to
+`slides/`.
 
 ## Set up your own
 
 You need a GitHub account, a Claude API key, and a Gmail account. Running it costs
-roughly $1 to $2 of Claude API usage per week at the default settings; GitHub Actions
+roughly $2 to $4 of Claude API usage per week at the default settings; GitHub Actions
 is free for public repositories.
 
 ### 1. Copy the repository
@@ -140,11 +163,14 @@ Open `config.yaml` and edit:
   queries use the same syntax as the PubMed website's search box.
 - `journal_tiers`: which journals rank highest.
 - `max_per_section`, `lookback_days`, `model`.
+- `education`: what the weekly lesson is for, and any topics you want taught.
 
-The schedule is in `.github/workflows/weekly-review.yml`. It is set for Friday at about
-7:30 am US Central time. GitHub schedules use UTC and ignore daylight saving, which is
-why there are two schedule lines and a first step that picks the right one. For a
-different time zone, change both the `cron` lines and the zone names in that step.
+The schedule is in `.github/workflows/weekly-review.yml`. It is set to start just after
+midnight on Friday, US Central time, so the emails are waiting in the morning. GitHub
+schedules use UTC, ignore daylight saving, and can start hours late, which is why there
+are many schedule lines and a first step that lets only the first run of each Friday do
+the work. For a different day or time zone, change the `cron` lines, the `TZ` setting and
+the day check in that step.
 
 ### 5. Run it
 
@@ -164,6 +190,7 @@ cp .env.example .env        # then fill in the three values; .env is never commi
 python collect.py
 python curate.py
 python send_email.py reports/review_*.md
+python educate.py           # the lesson; then send reports/lesson_*.md the same way
 ```
 
 ## Things to know
@@ -175,7 +202,8 @@ python send_email.py reports/review_*.md
 - **Every review is archived as a PDF** in [`archive/`](archive/), committed by the
   weekly run. If your repository is public, so is the archive. To keep reviews private,
   make the repository private or remove the "Save a PDF copy" step from the workflow.
-- GitHub may start scheduled runs several minutes late.
+- GitHub can start scheduled runs hours late, or skip one. The workflow is built to
+  tolerate that, but it cannot promise an exact delivery time.
 - `retrospective_collect.py` and `retrospective_curate_prep.py` are an older, separate
   tool for month-by-month look-backs and are not part of the weekly run.
 

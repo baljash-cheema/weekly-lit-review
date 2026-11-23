@@ -1,35 +1,40 @@
 name: Weekly literature review
 
-# Runs every Friday morning and emails the review, aiming to land by 7:30 am Central.
-# GitHub schedules are in UTC and do not follow daylight saving, and GitHub sometimes
-# starts scheduled jobs late or skips them altogether (it skipped both on 2026-11-13).
-# So there are several entries through the morning, and the gate step lets exactly one
-# of them do the work: the first that starts at or after 6:50 am in Chicago on a day
-# whose review has not been saved to archive/ yet. The rest stop within seconds.
+# Runs in the early hours of every Friday (Chicago time) and sends two emails: the
+# literature review and the weekly lesson. The aim is for both to be waiting at wake-up.
+#
+# GitHub schedules are in UTC, do not follow daylight saving, and are not punctual: on
+# 2026-11-20 every scheduled start came about seven hours late, and on 2026-11-13 some
+# never came at all. So there are many entries, beginning on Thursday evening Chicago
+# time, and the gate step lets exactly one of them do the work: the first that actually
+# starts on a Friday in Chicago (any time from midnight) and finds that day's review not
+# yet saved to archive/. Entries that start on time on Thursday evening stop within
+# seconds; if GitHub runs them hours late, they land after midnight and do the job.
 #
 # To run it by hand: GitHub -> Actions -> Weekly literature review -> Run workflow.
 
 on:
   schedule:
-    - cron: "55 11 * * 5"   # 6:55 am Central in daylight time (too early in winter; skipped)
-    - cron: "55 12 * * 5"   # 6:55 am Central in standard time; backup in summer
-    - cron: "25 13 * * 5"   # backup
-    - cron: "55 13 * * 5"   # backup
-    - cron: "55 14 * * 5"   # backup
-    - cron: "55 16 * * 5"   # last backup (late morning Central)
+    - cron: "17 0-4 * * 5"       # Thursday evening in Chicago: only useful when GitHub runs late
+    - cron: "17,47 5-9 * * 5"    # midnight to about 4 am Friday in Chicago, every half hour
+    - cron: "17 10-16/2 * * 5"   # backups through Friday morning
   workflow_dispatch:
     inputs:
       days:
         description: "Days to look back"
         default: "7"
       send_email:
-        description: "Email the report"
+        description: "Send the emails"
         type: boolean
         default: true
       archive:
-        description: "Save the PDF and slides to the repository"
+        description: "Save the PDFs, slides and lesson topic to the repository"
         type: boolean
         default: true
+      lesson_only:
+        description: "Lesson only (do not send or save the review)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write  # to save each week's PDF into archive/
@@ -45,6 +50,8 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      TZ: America/Chicago   # every date and time below is Chicago's, including file names
     steps:
       # GitHub switches off schedules in public repositories after 60 days without
       # activity. Re-enabling the workflow on each scheduled run resets that clock.
@@ -63,11 +70,10 @@ jobs:
         run: |
           run=true
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            now=$(TZ=America/Chicago date +%H%M)
-            today=$(date -u +%F)   # same clock curate.py uses to date the report
+            today=$(date +%F)   # Chicago date; the same clock curate.py uses to date the report
             saved="archive/${today%%-*}/weekly-review-$today.pdf"
-            if [ "$((10#$now))" -lt 650 ]; then
-              echo "It is $now in Chicago, before 6:50 am. Leaving it to the next entry."
+            if [ "$(date +%u)" != "5" ]; then
+              echo "It is $(date '+%A %H:%M') in Chicago, not Friday. Leaving it to another entry."
               run=false
             elif [ -f "$saved" ]; then
               echo "Today's review is already saved ($saved). Nothing to do."
@@ -103,33 +109,69 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: python make_slides.py
 
+      # The weekly lesson: Claude picks a topic from this week's review, gathers the
+      # background literature from PubMed and teaches it. If this step fails the review
+      # still goes out, and the last step of the job reports the failure.
+      - name: Write this week's lesson
+        id: lesson
+        if: steps.gate.outputs.run == 'true'
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python educate.py
+
       - name: Email the report
-        if: steps.gate.outputs.run == 'true' && (github.event_name == 'schedule' || inputs.send_email)
+        if: steps.gate.outputs.run == 'true' && !inputs.lesson_only && (github.event_name == 'schedule' || inputs.send_email)
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
           REVIEW_EMAIL_TO: ${{ secrets.REVIEW_EMAIL_TO }}
         run: python send_email.py reports/review_*.md --attach $(ls slides/*/review-slides-*.pptx 2>/dev/null | tail -1)
 
-      # Print the same formatted page the email uses to a PDF and commit it, so every
-      # week's review stays in the repository under archive/<year>/. The slide deck, when
-      # there is one, is committed alongside under slides/<year>/.
-      - name: Save the PDF and slides to the repository
-        if: steps.gate.outputs.run == 'true' && (github.event_name == 'schedule' || inputs.archive)
+      - name: Email the lesson
+        if: steps.gate.outputs.run == 'true' && steps.lesson.outcome == 'success' && (github.event_name == 'schedule' || inputs.send_email)
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
+          REVIEW_EMAIL_TO: ${{ secrets.REVIEW_EMAIL_TO }}
         run: |
-          report=$(ls reports/review_*.md | head -1)
-          day=$(basename "$report" .md | sed 's/^review_//')
-          out="archive/${day%%-*}/weekly-review-$day.pdf"
-          mkdir -p "$(dirname "$out")"
-          python send_email.py "$report" --html "$RUNNER_TEMP/review.html"
+          lesson=$(ls reports/lesson_*.md | tail -1)
+          python send_email.py "$lesson" --subject "$(head -1 "$lesson" | sed 's/^# //')"
+
+      # Print the same formatted pages the emails use to PDF and commit them, so every
+      # week's review and lesson stay in the repository under archive/<year>/. The slide
+      # deck, when there is one, is committed under slides/<year>/, and the lesson's topic
+      # is added to education/history.json so it is never taught twice.
+      - name: Save the PDFs and slides to the repository
+        if: steps.gate.outputs.run == 'true' && (github.event_name == 'schedule' || inputs.archive)
+        env:
+          LESSON_ONLY: ${{ inputs.lesson_only }}
+          LESSON_OUTCOME: ${{ steps.lesson.outcome }}
+        run: |
           chrome=$(command -v google-chrome || command -v chromium-browser || command -v chromium)
-          "$chrome" --headless=new --no-sandbox --disable-gpu --no-pdf-header-footer \
-            --print-to-pdf="$out" "file://$RUNNER_TEMP/review.html"
-          test -s "$out"
+          to_pdf() {   # to_pdf <markdown file> <pdf to write>
+            mkdir -p "$(dirname "$2")"
+            python send_email.py "$1" --html "$RUNNER_TEMP/page.html"
+            "$chrome" --headless=new --no-sandbox --disable-gpu --no-pdf-header-footer \
+              --print-to-pdf="$2" "file://$RUNNER_TEMP/page.html"
+            test -s "$2"
+            git add "$2"
+          }
+          day=$(date +%F)
+          if [ "$LESSON_ONLY" != "true" ]; then
+            report=$(ls reports/review_*.md | tail -1)
+            day=$(basename "$report" .md | sed 's/^review_//')
+            to_pdf "$report" "archive/${day%%-*}/weekly-review-$day.pdf"
+            if [ -d slides ]; then git add slides; fi
+          fi
+          if [ "$LESSON_OUTCOME" = "success" ]; then
+            lesson=$(ls reports/lesson_*.md | tail -1)
+            lday=$(basename "$lesson" .md | sed 's/^lesson_//')
+            to_pdf "$lesson" "archive/${lday%%-*}/weekly-lesson-$lday.pdf"
+            git add education/history.json
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$out"
-          if [ -d slides ]; then git add slides; fi
           git commit -m "Archive weekly review $day" || echo "No change to archive"
           git pull --rebase --quiet
           git push
@@ -139,6 +181,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: review-${{ github.run_id }}
-          path: reports/review_*.md
+          path: |
+            reports/review_*.md
+            reports/lesson_*.md
           if-no-files-found: ignore
           retention-days: 90
+
+      # Turns the run red (and so emails a failure notice) when the lesson could not be
+      # written, even though the review itself went out.
+      - name: Report a lesson that could not be written
+        if: steps.lesson.outcome == 'failure'
+        run: |
+          echo "The weekly lesson failed; see the 'Write this week's lesson' step above."
+          exit 1
