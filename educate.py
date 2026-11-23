@@ -35,7 +35,7 @@ from datetime import datetime
 from pathlib import Path
 
 from collect import EXCLUDE_TYPES, PUBMED_BASE, get, pubmed_fetch
-from curate import ABSTRACT_CHARS, Curator, load_config, unsupported_numbers
+from curate import ABSTRACT_CHARS, Curator, clean_title, load_config, unsupported_numbers
 
 BASE_DIR = Path(__file__).parent
 CANDIDATES_PATH = BASE_DIR / "data" / "candidates.json"
@@ -441,7 +441,7 @@ class References:
         for i, pmid in enumerate(self.order, 1):
             a = self.sources[pmid]
             year = f" {a['year']}." if a.get("year") else ""
-            out.append(f"{i}. {a['authors'].rstrip('.')}. [{a['title'].rstrip('.')}]({a['url']}). "
+            out.append(f"{i}. {a['authors'].rstrip('.')}. [{clean_title(a['title'])}]({a['url']}). "
                        f"*{a['journal']}*.{year}")
         return out
 
@@ -466,7 +466,7 @@ def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
            refs.plain(plan["why_now"]), ""]
     if triggers:
         out += ["Prompted by this week's: " + "; ".join(
-            f"[{a['title'].rstrip('.')}]({a['url']}) (*{a['journal']}*)" for a in triggers), ""]
+            f"[{clean_title(a['title'])}]({a['url']}) (*{a['journal']}*)" for a in triggers), ""]
     out += ["## The bottom line", "", refs.plain(lesson["bottom_line"]), ""]
 
     # A table goes under the section it names; one that names no section goes under the last.
@@ -507,7 +507,7 @@ def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
                              "Check against the paper.")
             year = f" · {a['year']}" if a.get("year") else ""
             out += [f"### [{refs.plain(t['name'])}]({a['url']})",
-                    f"*{a['title'].rstrip('.')}. {a['journal']}{year} · {a['authors']}*", "",
+                    f"*{clean_title(a['title'])}. {a['journal']}{year} · {a['authors']}*", "",
                     f"**Design:** {design}", "", f"**Results:** {results}", "",
                     f"**Takeaway:** {refs.plain(t['takeaway'])}", ""]
 
@@ -525,17 +525,18 @@ def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
         for pmid, r in reading:
             a = by_pmid[pmid]
             year = f", {a['year']}" if a.get("year") else ""
-            out.append(f"- [{a['title'].rstrip('.')}]({a['url']}) (*{a['journal']}*{year}). "
+            out.append(f"- [{clean_title(a['title'])}]({a['url']}) (*{a['journal']}*{year}). "
                        f"{refs.plain(r['why'])}")
         out.append("")
+
+    read = re.sub(r"\]\([^)]*\)", "]", "\n".join(out))
+    minutes = max(1, round(len(read.split()) / 220))
+    out[2] = (f"**{datetime.strptime(day, '%Y-%m-%d'):%B %-d, %Y}** · "
+              f"about a {minutes}-minute read")
 
     listing = refs.listing()
     if listing:
         out += ["## References", ""] + listing + [""]
-
-    body = "\n".join(out)
-    words = len(re.sub(r"\]\([^)]*\)", "]", body).split())
-    out[2] = f"**{datetime.strptime(day, '%Y-%m-%d'):%B %-d, %Y}** · about a {max(1, round(words / 230))}-minute read"
 
     out += ["## About this lesson", "",
             f"- The topic was chosen by {model_label} from this week's review and the list of "

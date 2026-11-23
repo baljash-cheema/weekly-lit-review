@@ -267,6 +267,14 @@ def unsupported_numbers(finding, abstract):
     return [n for n in NUMBER_RE.findall(_normalise(finding)) if n not in have]
 
 
+def clean_title(title):
+    """PubMed wraps a translated title in square brackets; they break markdown links."""
+    title = title.strip().rstrip(".").strip()
+    while title.startswith("[") and title.endswith("]"):
+        title = title[1:-1].strip().rstrip(".").strip()
+    return title
+
+
 def clean(text):
     # Drop stray "(12345678)" PMID references from prose
     text = re.sub(r"\s*\((?:PMIDs?:?\s*)?\d{8}(?:\s*[,;]\s*\d{8})*\)", "", str(text))
@@ -281,7 +289,7 @@ def render_section(title, result, by_pmid):
     out = [f"## {title}", "", clean(result["landscape"]), ""]
     for s in result["studies"]:
         a = by_pmid[s["pmid"]]
-        name = a["title"].rstrip(".")
+        name = clean_title(a["title"])
         if s["depth"] == "full":
             doi = f" · [DOI](https://doi.org/{a['doi']})" if a["doi"] else ""
             out += [f"### [{name}]({a['url']})",
@@ -301,7 +309,7 @@ def render_section(title, result, by_pmid):
         out += ["**Also notable**", ""]
         for n in result["also_notable"]:
             a = by_pmid[n["pmid"]]
-            out.append(f"- [{a['title'].rstrip('.')}]({a['url']}) (*{a['journal']}*). {clean(n['note'])}")
+            out.append(f"- [{clean_title(a['title'])}]({a['url']}) (*{a['journal']}*). {clean(n['note'])}")
         out.append("")
     return "\n".join(out)
 
