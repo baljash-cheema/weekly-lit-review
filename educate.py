@@ -248,8 +248,9 @@ after_section (the exact heading of the section it belongs under), columns (at m
 five column headings) and rows, where each row is one string with its cells separated \
 by " | " in column order. Keep cells short, and keep the table to six rows at most; \
 anything longer belongs in prose. An empty list is fine when nothing calls for a table.
-- key_trials: the three studies from the supplied records that he most needs to know, in \
-the order that tells the story; a fourth only if it genuinely changes the story. This \
+- key_trials: exactly three studies from the supplied records, the three he most needs to \
+know, in the order that tells the story. Only three are printed, so choose them; a fourth \
+is discarded. This \
 block is a quick-reference card, not a second lesson, so keep it lean: the full citation \
 is added automatically, so do not repeat the title in name. For each give pmid; name (the \
 trial's acronym or a short label); design (one sentence, 30 words at most: population, \
@@ -495,7 +496,7 @@ def render_lesson(lesson, plan, sources, triggers, notes, model_label, day):
                 out += render_table(t, refs)
 
     trials = []
-    for t in lesson["key_trials"]:
+    for t in lesson["key_trials"][:3]:
         pmid = re.sub(r"\D", "", t["pmid"])
         if pmid not in by_pmid:
             notes.append(f"Dropped a key trial citing PMID {t['pmid']!r}, which was not among "
